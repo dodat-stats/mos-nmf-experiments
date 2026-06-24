@@ -1,14 +1,22 @@
-name: "mos-nmf-experiments"
+name: mos-nmf-experiments
 output_dir: ../docs
 navbar:
-  title: "mos-nmf-experiments"
+  title: mos-nmf-experiments
   left:
   - text: Home
     href: index.html
+  - text: Poisson SuSiE
+    href: poisson-susie.html
+  - text: Joint Learn F
+    href: joint-learn-susie-poi-F.html
   - text: About
     href: about.html
   - text: License
     href: license.html
+  right:
+  - icon: fab fa-github
+    text: Source code
+    href: https://github.com/dodat-stats/mos-nmf-experiments
 output:
   workflowr::wflow_html:
     toc: yes
