@@ -12,6 +12,7 @@ Documenting experiments with MoS-NMF (Mixture of Submanifold Non-negative Matrix
 
 + [Poisson susie](poisson-susie.html)
 
++ [susie poisson NMF](joint-learn-susie-poi-F.html)
 
 
 

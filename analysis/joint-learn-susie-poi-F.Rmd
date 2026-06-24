@@ -1,0 +1,276 @@
+---
+title: "Joint Learning of F in Poisson SuSiE"
+site: workflowr::wflow_site
+output:
+  workflowr::wflow_html:
+    toc: true
+    toc_float: true
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 7, fig.height = 4)
+```
+
+This page turns the simulation at the end of
+`code/joint-learn-susie-poi-F.R` into a reproducible workflowr analysis. The
+experiment fits matrix-factorization Poisson SuSiE while updating the shared
+factor matrix `F`.
+
+```{r source-code}
+source("code/joint-learn-susie-poi-F.R")
+```
+
+## Fitted Model
+
+For a count matrix \(Y \in \mathbb{N}^{N \times M}\), the fitted model uses a
+shared nonnegative factor matrix \(F \in \mathbb{R}_+^{K \times M}\) and a
+small number \(D\) of single-effect components per observation:
+\[
+  Y_{im} \sim \mathrm{Poisson}\left(
+    \sum_{d=1}^D \beta_{id} F_{\gamma_{id}m}
+  \right).
+\]
+Each effect chooses one factor row through
+\(\gamma_{id} \in \{1,\ldots,K\}\), and its size is \(\beta_{id} > 0\).
+The variational fit estimates posterior assignment probabilities
+`gamma_bar[i, d, k]`, Gamma variational parameters for the effect sizes, and,
+when `update_F = TRUE`, the shared factor matrix `F`.
+
+The simulation below first checks recovery when the true factor matrix `F0` is
+given to the algorithm, then repeats the fit from a random initialized `F` while
+learning `F` jointly.
+
+## Simulate Data
+
+We create eight observation groups. Groups 1 through 5 each use one factor, and
+groups 6 through 8 use three-factor combinations.
+
+```{r simulate}
+set.seed(42)
+
+N = 1600
+M = 2000
+K = 5
+D = 3
+
+F0 = matrix(rgamma(M * K, shape = 0.1, rate = 0.01), nrow = K, ncol = M)
+F0 = F0 / rowSums(F0)
+
+n_per_group = N / 8
+L = matrix(0, nrow = N, ncol = K)
+grp = rep(1:8, each = n_per_group)
+
+for (g in 1:5) {
+  L[grp == g, g] = matrix(rgamma(n_per_group, 10, 1), n_per_group, 1)
+}
+
+L[grp == 6, c(1, 2, 3)] = matrix(rgamma(n_per_group * 3, 20, 1),
+                                  n_per_group, 3)
+L[grp == 7, c(1, 2, 4)] = matrix(rgamma(n_per_group * 3, 20, 1),
+                                  n_per_group, 3)
+L[grp == 8, c(2, 3, 5)] = matrix(rgamma(n_per_group * 3, 20, 1),
+                                  n_per_group, 3)
+
+rate = L %*% F0
+Y = matrix(rpois(N * M, rate), nrow = N, ncol = M)
+
+data.frame(
+  N = N,
+  M = M,
+  K = K,
+  D = D,
+  total_count = sum(Y),
+  nonzero_entries = sum(Y > 0)
+)
+```
+
+```{r true-patterns}
+true_patterns = vapply(1:8, function(g) {
+  paste(which(colSums(L[grp == g, , drop = FALSE]) > 0), collapse = ",")
+}, character(1))
+
+data.frame(group = 1:8, true_active_factors = true_patterns)
+```
+
+```{r true-factor-shapes}
+matplot(t(F0[, 1:150]), type = "l", lty = 1,
+        xlab = "m", ylab = "F0[k, m]",
+        main = "True factor rows")
+legend("topright", legend = paste("factor", 1:K), col = 1:K, lty = 1,
+       bty = "n")
+```
+
+## Fit With True F0
+
+As a baseline, we first fit the model with the true factor matrix fixed. This
+isolates recovery of the posterior labels from the harder problem of learning
+`F`.
+
+```{r fit-true-F0}
+alpha0_true = matrix(1, N, D)
+lambda0_true = matrix(1, N, D)
+
+fit_true_F0 = mf_poi_susie(
+  Y = Y,
+  F = F0,
+  alpha0 = alpha0_true,
+  lambda0 = lambda0_true,
+  max_iters = 100,
+  update_prior = TRUE,
+  break_symmetry = FALSE,
+  init_seed = 1,
+  update_F = FALSE,
+  fine_init_gamma = FALSE,
+  step_init = 0.1,
+  step_ramp = 50
+)
+```
+
+```{r elbo-true-F0}
+plot(fit_true_F0$elbo, type = "l", xlab = "Iteration", ylab = "ELBO",
+     main = "ELBO with true F0")
+```
+
+```{r recovered-labels-true-F0}
+top_k_true_F0 = matrix(0, N, D)
+for (d in 1:D) {
+  top_k_true_F0[, d] = apply(fit_true_F0$gamma_bar[, d, ], 1, which.max)
+}
+
+recovered_label_true_F0 = apply(top_k_true_F0, 1, function(x) {
+  paste(sort(x), collapse = ",")
+})
+
+recovered_factor_mat_true_F0 = matrix(0, nrow = K, ncol = N)
+for (i in 1:N) {
+  recovered_factor_mat_true_F0[top_k_true_F0[i, ], i] =
+    recovered_factor_mat_true_F0[top_k_true_F0[i, ], i] + 1
+}
+
+image(x = seq_len(N), y = seq_len(K), z = t(recovered_factor_mat_true_F0),
+      axes = FALSE, xlab = "Sample", ylab = "Recovered factor",
+      main = "Recovered factors with true F0",
+      col = c("white", "firebrick", "darkred"))
+axis(1, at = seq(n_per_group / 2, N, by = n_per_group),
+     labels = paste("G", 1:8))
+axis(2, at = seq_len(K), labels = seq_len(K), las = 1)
+abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
+       col = "gray80", lty = 3)
+box()
+```
+
+```{r recovered-table-true-F0}
+recovered_by_group_true_F0 = do.call(rbind, lapply(1:8, function(g) {
+  idx = which(grp == g)
+  tab = table(recovered_label_true_F0[idx])
+  data.frame(group = g, recovered_pattern = names(tab), n = as.integer(tab),
+             row.names = NULL)
+}))
+
+recovered_by_group_true_F0
+```
+
+## Fit With Unknown F
+
+The fit starts from a random row-normalized factor matrix and updates `F` inside
+the variational loop.
+
+```{r fit}
+alpha0 = matrix(1, N, D)
+lambda0 = matrix(1, N, D)
+
+F = matrix(rgamma(M * K, shape = 0.2, rate = 0.05), nrow = K, ncol = M)
+F = F / rowSums(F)
+
+fit = mf_poi_susie(
+  Y = Y,
+  F = F,
+  alpha0 = alpha0,
+  lambda0 = lambda0,
+  max_iters = 100,
+  update_prior = TRUE,
+  break_symmetry = FALSE,
+  init_seed = 1,
+  update_F = TRUE,
+  fine_init_gamma = FALSE,
+  step_init = 0.1,
+  step_ramp = 50
+)
+```
+
+```{r elbo}
+plot(fit$elbo, type = "l", xlab = "Iteration", ylab = "ELBO",
+     main = "Variational objective")
+```
+
+## Recovery
+
+For each observation and effect, we summarize the factor with the largest
+posterior assignment probability.
+
+```{r top-k}
+top_k = matrix(0, N, D)
+for (d in 1:D) {
+  top_k[, d] = apply(fit$gamma_bar[, d, ], 1, which.max)
+}
+
+recovered_by_group = do.call(rbind, lapply(1:8, function(g) {
+  idx = which(grp == g)
+  tab = table(apply(top_k[idx, ], 1, function(x) paste(sort(x), collapse = ",")))
+  data.frame(group = g, recovered_pattern = names(tab), n = as.integer(tab),
+             row.names = NULL)
+}))
+
+recovered_by_group
+```
+
+```{r representative-posterior}
+representative_idx = c(
+  which(grp == 1)[1],
+  which(grp == 2)[1],
+  which(grp == 3)[1],
+  which(grp == 4)[1],
+  which(grp == 5)[1],
+  which(grp == 6)[4],
+  which(grp == 7)[1],
+  which(grp == 8)[1]
+)
+
+representative_gamma = lapply(seq_along(representative_idx), function(j) {
+  i = representative_idx[j]
+  out = round(fit$gamma_bar[i, , ], 2)
+  rownames(out) = paste0("effect_", seq_len(D))
+  colnames(out) = paste0("factor_", seq_len(K))
+  out
+})
+names(representative_gamma) = paste0("group_", 1:8)
+
+representative_gamma
+```
+
+```{r recovered-factors-learned-F}
+recovered_factor_mat = matrix(0, nrow = K, ncol = N)
+for (i in 1:N) {
+  recovered_factor_mat[top_k[i, ], i] =
+    recovered_factor_mat[top_k[i, ], i] + 1
+}
+
+image(x = seq_len(N), y = seq_len(K), z = t(recovered_factor_mat),
+      axes = FALSE, xlab = "Sample", ylab = "Recovered factor",
+      main = "Recovered factors with learned F",
+      col = c("white", "firebrick", "darkred"))
+axis(1, at = seq(n_per_group / 2, N, by = n_per_group),
+     labels = paste("G", 1:8))
+axis(2, at = seq_len(K), labels = seq_len(K), las = 1)
+abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
+       col = "gray80", lty = 3)
+box()
+```
+
+The learned `F` is identifiable only up to permutation of its rows. A direct
+row-wise comparison to `F0` is therefore not meaningful without matching rows,
+but the group-level top-factor summaries show whether observations are assigned
+to stable one-factor or three-factor patterns after jointly updating `F`.
