@@ -8,4 +8,11 @@ editor_options:
   chunk_output_type: console
 ---
 
-Welcome to my research website.
+Documenting experiments with MoS-NMF (Mixture of Submanifold Non-negative Matrix Factorization).
+
++ [Poisson susie](poisson-susie.html)
+
+
+
+
+

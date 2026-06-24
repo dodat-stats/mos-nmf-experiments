@@ -1,0 +1,205 @@
+---
+title: "Poisson SuSiE"
+site: workflowr::wflow_site
+output:
+  workflowr::wflow_html:
+    toc: true
+    toc_float: true
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 7, fig.height = 4)
+```
+
+This page demonstrates the single-observation Poisson SuSiE algorithm implemented
+in `code/poisson-susie.R`.
+
+```{r source-code}
+source("code/poisson-susie.R")
+```
+
+## Model
+
+For a count vector \(y = (y_1,\ldots,y_M)\) and a known nonnegative dictionary
+\(F \in \mathbb{R}_+^{K \times M}\),
+\[
+  y_m \sim \mathrm{Poisson}\left(\sum_{d=1}^D \beta_d F_{\gamma_d m}\right),
+  \qquad
+  \gamma_d \sim \mathrm{Categorical}(1/K,\ldots,1/K),
+  \qquad
+  \beta_d \mid \gamma_d \sim \mathrm{Gamma}(\alpha_d^0,\lambda_d^0).
+\]
+The variational posterior assigns each effect \(d\) a categorical distribution
+over the rows of \(F\), stored as `gamma_bar[d, k]`.
+
+## Simulate Data
+
+We simulate \(K = 10\) candidate factors and generate one count vector from three
+active factors.
+
+```{r simulate}
+set.seed(5)
+
+M = 2000
+D = 5
+K = 10
+
+F = matrix(rgamma(M * K, shape = 0.1, rate = 0.01), nrow = K, ncol = M)
+
+true_l = rep(0, K)
+true_l[1:3] = c(1, 2, 3)
+
+y_mean = as.numeric(true_l %*% F)
+y = rpois(M, y_mean)
+
+data.frame(
+  M = M,
+  K = K,
+  D = D,
+  total_count = sum(y),
+  nonzero_bins = sum(y > 0)
+)
+```
+
+```{r factor-shapes}
+matplot(t(F[1:5, 1:150]), type = "l", lty = 1,
+        xlab = "m", ylab = "F[k, m]",
+        main = "First five dictionary rows")
+legend("topright", legend = paste("factor", 1:5), col = 1:5, lty = 1,
+       bty = "n")
+```
+
+## Fit
+
+```{r fit}
+alpha0 = rep(1, D)
+lambda0 = rep(1, D)
+
+fit = poi_susie(
+  y = y,
+  F = F,
+  alpha0 = alpha0,
+  lambda0 = lambda0,
+  max_iters = 100,
+  update_prior = TRUE,
+  init_seed = 3,
+  break_symmetry = FALSE
+)
+```
+
+```{r elbo}
+plot(fit$elbo, type = "l", xlab = "Iteration", ylab = "ELBO",
+     main = "Variational objective")
+```
+
+## Recovery
+
+Rows of `gamma_bar` correspond to the \(D\) single effects, and columns
+correspond to candidate factors. The true active factors are 1, 2, and 3.
+
+```{r gamma-table}
+round(fit$gamma_bar, 3)
+```
+
+```{r top-factors}
+top_factor = apply(fit$gamma_bar, 1, which.max)
+posterior_mass = apply(fit$gamma_bar, 1, max)
+estimated_beta = rowSums(fit$gamma_bar * fit$alpha / fit$lambda)
+
+data.frame(
+  effect = seq_len(D),
+  top_factor = top_factor,
+  posterior_mass = round(posterior_mass, 3),
+  estimated_beta = round(estimated_beta, 3)
+)
+```
+
+```{r gamma-heatmap}
+op = par(mar = c(5, 4, 3, 6))
+image(t(fit$gamma_bar[D:1, ]), axes = FALSE, xlab = "Factor", ylab = "Effect",
+      main = "Posterior factor assignment probabilities")
+axis(1, at = seq(0, 1, length.out = K), labels = seq_len(K))
+axis(2, at = seq(0, 1, length.out = D), labels = D:1)
+box()
+par(op)
+```
+
+The algorithm recovers the active factors up to permutation of the \(D\) effects.
+Extra effects can remain diffuse or attach weakly depending on initialization and
+the learned prior scale.
+
+## Fit With Symmetry Breaking
+
+The `break_symmetry` option checks whether two active effects have nearly the
+same posterior assignment vector. If they do, one effect is averaged with the
+other and the duplicate is reset to the uniform distribution. This is intended
+to discourage two effects from explaining the same factor.
+
+```{r fit-break-symmetry}
+fit_break = poi_susie(
+  y = y,
+  F = F,
+  alpha0 = alpha0,
+  lambda0 = lambda0,
+  max_iters = 100,
+  update_prior = TRUE,
+  init_seed = 3,
+  break_symmetry = TRUE
+)
+```
+
+```{r compare-elbo}
+plot(fit$elbo, type = "l", col = "black", lwd = 2,
+     xlab = "Iteration", ylab = "ELBO",
+     main = "ELBO with and without symmetry breaking")
+lines(fit_break$elbo, col = "red", lwd = 2)
+legend("bottomright", legend = c("break_symmetry = FALSE",
+                                 "break_symmetry = TRUE"),
+       col = c("black", "red"), lwd = 2, bty = "n")
+```
+
+```{r gamma-table-break}
+round(fit_break$gamma_bar, 3)
+```
+
+```{r top-factors-break}
+top_factor_break = apply(fit_break$gamma_bar, 1, which.max)
+posterior_mass_break = apply(fit_break$gamma_bar, 1, max)
+estimated_beta_break = rowSums(fit_break$gamma_bar *
+                                 fit_break$alpha / fit_break$lambda)
+
+data.frame(
+  effect = seq_len(D),
+  top_factor = top_factor_break,
+  posterior_mass = round(posterior_mass_break, 3),
+  estimated_beta = round(estimated_beta_break, 3)
+)
+```
+
+```{r compare-gamma-heatmaps, fig.width=9, fig.height=4}
+op = par(mfrow = c(1, 2), mar = c(5, 4, 3, 2))
+image(t(fit$gamma_bar[D:1, ]), axes = FALSE, xlab = "Factor", ylab = "Effect",
+      main = "break_symmetry = FALSE")
+axis(1, at = seq(0, 1, length.out = K), labels = seq_len(K))
+axis(2, at = seq(0, 1, length.out = D), labels = D:1)
+box()
+
+image(t(fit_break$gamma_bar[D:1, ]), axes = FALSE,
+      xlab = "Factor", ylab = "Effect",
+      main = "break_symmetry = TRUE")
+axis(1, at = seq(0, 1, length.out = K), labels = seq_len(K))
+axis(2, at = seq(0, 1, length.out = D), labels = D:1)
+box()
+par(op)
+```
+
+With this seed, symmetry breaking keeps effects from collapsing onto identical
+posterior assignment vectors. The active factors are still recovered up to
+permutation, but the extra effects are more likely to be reset toward diffuse
+assignments instead of duplicating an already-explained factor. This can make
+the interpretation cleaner when \(D\) is larger than the true number of active
+components, although the reset step can also introduce small ELBO jumps because
+it perturbs the current coordinate-ascent solution.
