@@ -1,0 +1,184 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage[margin=1in]{geometry}
+\usepackage{algorithm, algpseudocode}
+
+\newcommand{\Gam}{\mathrm{Gam}}
+\newcommand{\Poi}{\mathrm{Poi}}
+\newcommand{\Cat}{\mathrm{Cat}}
+\newcommand{\KL}{\mathrm{KL}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\gb}{\bar{\gamma}}
+
+\title{Poisson SuSiE for One Count Vector}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Model}
+
+We observe one count vector $y \in \mathbb{N}^M$ and a known nonnegative
+dictionary $F \in \mathbb{R}_+^{K \times M}$. The Poisson SuSiE model writes the
+Poisson rate as a sparse sum of $D$ effects:
+\[
+  y_m \sim \Poi\left(\sum_{d=1}^D \beta_d F_{\gamma_d m}\right),
+  \qquad m = 1,\ldots,M.
+\]
+For each effect $d$,
+\begin{align}
+  \gamma_d &\sim \Cat\left(\frac{1}{K},\ldots,\frac{1}{K}\right), \\
+  \beta_d \mid \gamma_d &\sim \Gam(\alpha_d^0,\lambda_d^0),
+\end{align}
+where the Gamma distribution is parameterized by shape and rate. The index
+$\gamma_d \in \{1,\ldots,K\}$ selects one row of $F$, and $\beta_d > 0$ is the
+effect size.
+
+\section{Variational Family}
+
+The approximation factorizes over effects:
+\[
+  q(\beta,\gamma)
+  = \prod_{d=1}^D q(\gamma_d) q(\beta_d \mid \gamma_d),
+\]
+with
+\[
+  q(\gamma_d = k) = \gb_{dk},
+  \qquad
+  q(\beta_d \mid \gamma_d = k) = \Gam(\alpha_{dk},\lambda_{dk}).
+\]
+We also introduce auxiliary responsibilities $\xi_{dm} \geq 0$ satisfying
+$\sum_{d=1}^D \xi_{dm}=1$ for each coordinate $m$. They allocate the count
+$y_m$ across the $D$ effects.
+
+The moments used by the updates are
+\begin{align}
+  \E[\beta_d \mid \gamma_d = k] &= \frac{\alpha_{dk}}{\lambda_{dk}}, \\
+  \E[\log \beta_d \mid \gamma_d = k] &= \psi(\alpha_{dk}) - \log \lambda_{dk}, \\
+  \E[\log \beta_d] &=
+    \sum_{k=1}^K \gb_{dk}\{\psi(\alpha_{dk}) - \log \lambda_{dk}\}, \\
+  \E[\log F_{\gamma_d m}] &= \sum_{k=1}^K \gb_{dk}\log F_{km}.
+\end{align}
+
+\section{ELBO}
+
+Using Jensen's inequality with the responsibilities $\xi$, the evidence lower
+bound is
+\begin{align}
+  \mathcal{L}(q)
+  &= \sum_{d=1}^D \sum_{m=1}^M
+    \xi_{dm} y_m
+    \left\{\E[\log \beta_d] + \E[\log F_{\gamma_d m}]
+    - \log \xi_{dm}\right\} \nonumber \\
+  &\quad
+    - \sum_{d=1}^D \sum_{k=1}^K
+    \gb_{dk}\frac{\alpha_{dk}}{\lambda_{dk}}\sum_{m=1}^M F_{km}
+    - \sum_{d=1}^D \KL(q(\gamma_d,\beta_d)\,\|\,p(\gamma_d,\beta_d)).
+\end{align}
+The KL term decomposes into discrete and continuous parts:
+\begin{align}
+  \KL_{\mathrm{disc}}
+  &= \sum_{d=1}^D \sum_{k=1}^K \gb_{dk}
+     \left(\log \gb_{dk} - \log \frac{1}{K}\right), \\
+  \KL_{\mathrm{cont}}
+  &= \sum_{d=1}^D \sum_{k=1}^K \gb_{dk}
+  \Bigg[
+    (\alpha_{dk}-\alpha_d^0)\psi(\alpha_{dk})
+    + \alpha_d^0(\log \lambda_{dk}-\log \lambda_d^0) \nonumber \\
+  &\qquad\qquad
+    - \log\frac{\Gamma(\alpha_{dk})}{\Gamma(\alpha_d^0)}
+    - (\lambda_{dk}-\lambda_d^0)\frac{\alpha_{dk}}{\lambda_{dk}}
+  \Bigg].
+\end{align}
+
+\section{Coordinate Updates}
+
+\paragraph{Responsibility update.}
+For each coordinate $m$,
+\[
+  \xi_{dm}
+  \propto
+  \exp\left\{
+    \E[\log \beta_d] + \sum_{k=1}^K \gb_{dk}\log F_{km}
+  \right\},
+  \qquad d = 1,\ldots,D,
+\]
+normalized so that $\sum_d \xi_{dm}=1$.
+
+\paragraph{Gamma variational parameters.}
+For effect $d$ and factor $k$,
+\begin{align}
+  \alpha_{dk} &\leftarrow \alpha_d^0 + \sum_{m=1}^M \xi_{dm}y_m, \\
+  \lambda_{dk} &\leftarrow \lambda_d^0 + \sum_{m=1}^M F_{km}.
+\end{align}
+The shape update does not depend on $k$ because the same allocated count is used
+for every candidate factor.
+
+\paragraph{Categorical assignment update.}
+After dropping terms constant in $k$,
+\[
+  \log \gb_{dk}
+  \leftarrow
+  \sum_{m=1}^M \xi_{dm}y_m \log F_{km}
+  - \left(\alpha_d^0 + \sum_{m=1}^M \xi_{dm}y_m\right)
+    \log\left(\lambda_d^0+\sum_{m=1}^M F_{km}\right),
+\]
+then $\gb_{d1},\ldots,\gb_{dK}$ are normalized by a softmax.
+
+\section{Empirical Bayes Hyperparameter Update}
+
+When \texttt{update\_prior = TRUE}, the implementation updates
+$(\alpha_d^0,\lambda_d^0)$ for each effect. Define
+\begin{align}
+  \bar{\beta}_d
+  &= \sum_{k=1}^K \gb_{dk}\frac{\alpha_{dk}}{\lambda_{dk}}, \\
+  \overline{\log \beta}_d
+  &= \sum_{k=1}^K \gb_{dk}
+     \{\psi(\alpha_{dk})-\log \lambda_{dk}\}.
+\end{align}
+Maximizing the expected Gamma prior gives
+\[
+  \lambda_d^0 = \frac{\alpha_d^0}{\bar{\beta}_d},
+  \qquad
+  \psi(\alpha_d^0) = \overline{\log \beta}_d + \log \lambda_d^0.
+\]
+The second equation is solved numerically by root finding in the current R
+implementation.
+
+\section{Algorithm}
+
+\begin{algorithm}[H]
+\caption{Poisson SuSiE}
+\begin{algorithmic}[1]
+\State Initialize $\gb_{dk}$, $\alpha_{dk}$, and $\lambda_{dk}$.
+\For{$t = 1,\ldots,T$}
+  \If{symmetry breaking is enabled}
+    \State Reset duplicate active effects to the uniform assignment.
+  \EndIf
+  \For{$d = 1,\ldots,D$}
+    \State Update $\xi_{dm}$ for all $d$ and $m$ using the current posterior moments.
+    \State Update $\alpha_{dk}$ and $\lambda_{dk}$ for the selected effect $d$.
+    \State Update $\gb_{dk}$ for the selected effect $d$ by softmax normalization.
+    \If{empirical Bayes is enabled}
+      \State Update $\alpha_d^0$ and $\lambda_d^0$.
+    \EndIf
+  \EndFor
+  \State Evaluate the ELBO.
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\section{Effect of Symmetry Breaking}
+
+When $D$ is larger than the number of truly active components, multiple effects
+can converge to nearly identical posterior assignment vectors. The optional
+symmetry-breaking step detects such duplicate active effects, averages one copy
+with the duplicate, and resets the other copy to the uniform assignment over
+factors. In the simulation in the workflowr analysis, this keeps the recovered
+active factors unchanged up to permutation, while making unused effects more
+diffuse instead of duplicating an already-explained factor. The tradeoff is that
+the reset is an explicit perturbation of coordinate ascent, so the ELBO can show
+small jumps around symmetry-breaking updates.
+
+\end{document}
