@@ -1,0 +1,598 @@
+---
+title: "MF Poisson SuSiE Tree Scenario"
+site: workflowr::wflow_site
+output:
+  workflowr::wflow_html:
+    toc: true
+    toc_float: true
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 7, fig.height = 4)
+```
+
+This page creates a harder simulation for MF-Poisson-SuSiE. The true factor
+matrix has `K_true = 7`, and every observation group uses at least two factors.
+There are no single-factor anchor groups. The support patterns form a simple
+tree: all groups share factor 1, then split into branch factors 2 and 5, and
+some groups add one leaf factor.
+
+We fit the model with the correct number of factors, `K_fit = 7`, but with an
+overspecified number of effects, `D_fit = 5`.
+
+```{r source-code}
+source("code/joint-learn-susie-poi-F.R")
+```
+
+## Simulate Data
+
+```{r simulate}
+set.seed(47)
+
+N = 1800
+M = 2000
+K_true = 7
+K_fit = 7
+D_true = 3
+D_fit = 5
+
+group_supports = list(
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(1, 5, 6),
+  c(1, 5, 7),
+  c(1, 2),
+  c(1, 5)
+)
+n_groups = length(group_supports)
+n_per_group = N / n_groups
+grp = rep(seq_len(n_groups), each = n_per_group)
+
+F0 = matrix(rgamma(M * K_true, shape = 0.1, rate = 0.01),
+            nrow = K_true, ncol = M)
+F0 = F0 / rowSums(F0)
+
+L = matrix(0, nrow = N, ncol = K_true)
+for (g in seq_len(n_groups)) {
+  idx = which(grp == g)
+  support = group_supports[[g]]
+  L[idx, support] = matrix(rgamma(length(idx) * length(support),
+                                  shape = 18, rate = 1),
+                           nrow = length(idx), ncol = length(support))
+}
+
+rate = L %*% F0
+Y = matrix(rpois(N * M, rate), nrow = N, ncol = M)
+
+data.frame(
+  N = N,
+  M = M,
+  K_true = K_true,
+  K_fit = K_fit,
+  D_true = D_true,
+  D_fit = D_fit,
+  total_count = sum(Y),
+  nonzero_entries = sum(Y > 0)
+)
+```
+
+```{r true-patterns}
+true_patterns = vapply(group_supports, function(support) {
+  paste(support, collapse = ",")
+}, character(1))
+
+data.frame(group = seq_len(n_groups), true_active_factors = true_patterns)
+```
+
+```{r true-factor-shapes}
+matplot(t(F0[, 1:150]), type = "l", lty = 1,
+        xlab = "m", ylab = "F0[k, m]",
+        main = "True factor rows")
+legend("topright", legend = paste("factor", seq_len(K_true)),
+       col = seq_len(K_true), lty = 1, bty = "n")
+```
+
+## Diagnostics
+
+```{r diagnostic-helpers}
+row_cosine = function(A, B) {
+  A_norm = sqrt(rowSums(A^2))
+  B_norm = sqrt(rowSums(B^2))
+  (A %*% t(B)) / (A_norm %o% B_norm)
+}
+
+all_permutations = function(x) {
+  if (length(x) == 1) return(matrix(x, nrow = 1))
+  do.call(rbind, lapply(seq_along(x), function(i) {
+    cbind(x[i], all_permutations(x[-i]))
+  }))
+}
+
+match_factor_rows = function(F_hat, F_true) {
+  K = nrow(F_true)
+  similarity = row_cosine(F_hat, F_true)
+  perms = all_permutations(seq_len(K))
+  scores = apply(perms, 1, function(p) {
+    sum(similarity[cbind(seq_len(K), p)])
+  })
+  learned_to_true = perms[which.max(scores), ]
+
+  data.frame(
+    learned_factor = seq_len(K),
+    matched_true_factor = learned_to_true,
+    cosine = similarity[cbind(seq_len(K), learned_to_true)]
+  )
+}
+
+loading_scores = function(fit) {
+  E_beta = fit$alpha / fit$lambda
+  apply(fit$gamma_bar * E_beta, c(1, 3), sum)
+}
+
+posterior_inclusion_scores = function(fit) {
+  1 - apply(1 - fit$gamma_bar, c(1, 3), prod)
+}
+
+effect_sizes = function(fit) {
+  E_beta = fit$alpha / fit$lambda
+  rowSums(fit$gamma_bar * E_beta, dims = 2)
+}
+
+effect_gamma_entropy = function(fit) {
+  entropy = -fit$gamma_bar * log(fit$gamma_bar)
+  entropy[is.nan(entropy)] = 0
+  rowSums(entropy, dims = 2) / log(dim(fit$gamma_bar)[3])
+}
+
+effect_max_gamma = function(fit) {
+  apply(fit$gamma_bar, c(1, 2), max)
+}
+
+effect_top_factor = function(fit) {
+  apply(fit$gamma_bar, c(1, 2), which.max)
+}
+
+rank_by_effect_size = function(effect_mat, size_mat) {
+  out = matrix(0, nrow = nrow(effect_mat), ncol = ncol(effect_mat))
+  for (i in seq_len(nrow(effect_mat))) {
+    ord = order(size_mat[i, ], decreasing = TRUE)
+    out[i, ] = effect_mat[i, ord]
+  }
+  out
+}
+
+rank_gamma_bar_by_size = function(fit, size_mat) {
+  N = dim(fit$gamma_bar)[1]
+  D = dim(fit$gamma_bar)[2]
+  K = dim(fit$gamma_bar)[3]
+  out = array(0, dim = c(N, D, K))
+  for (i in seq_len(N)) {
+    ord = order(size_mat[i, ], decreasing = TRUE)
+    out[i, , ] = fit$gamma_bar[i, ord, ]
+  }
+  out
+}
+
+map_scores_to_true = function(scores, learned_to_true) {
+  K = length(learned_to_true)
+  out = matrix(0, nrow = nrow(scores), ncol = K)
+  for (k in seq_len(K)) {
+    out[, learned_to_true[k]] = out[, learned_to_true[k]] + scores[, k]
+  }
+  out
+}
+
+support_labels_from_scores = function(scores, support_sizes) {
+  vapply(seq_len(nrow(scores)), function(i) {
+    active = order(scores[i, ], decreasing = TRUE)[seq_len(support_sizes[i])]
+    paste(sort(active), collapse = ",")
+  }, character(1))
+}
+
+normalized_entropy = function(scores) {
+  prob = scores / rowSums(scores)
+  entropy = -prob * log(prob)
+  entropy[is.nan(entropy)] = 0
+  mean(rowSums(entropy)) / log(ncol(scores))
+}
+
+extra_effect_mass_fraction = function(size_mat, true_support_size) {
+  vapply(seq_len(nrow(size_mat)), function(i) {
+    sorted_sizes = sort(size_mat[i, ], decreasing = TRUE)
+    extra_idx = seq.int(true_support_size[i] + 1, length(sorted_sizes))
+    sum(sorted_sizes[extra_idx]) / sum(sorted_sizes)
+  }, numeric(1))
+}
+
+plot_cosine_heatmap = function(cosine_mat, main) {
+  image(x = seq_len(ncol(cosine_mat)), y = seq_len(nrow(cosine_mat)),
+        z = t(cosine_mat), axes = FALSE, xlab = "True factor",
+        ylab = "Fitted factor", main = main, col = hcl.colors(100, "YlOrRd"))
+  axis(1, at = seq_len(ncol(cosine_mat)),
+       labels = paste0("true ", seq_len(ncol(cosine_mat))))
+  axis(2, at = seq_len(nrow(cosine_mat)),
+       labels = paste0("fit ", seq_len(nrow(cosine_mat))), las = 1)
+  for (k_fit in seq_len(nrow(cosine_mat))) {
+    for (k_true in seq_len(ncol(cosine_mat))) {
+      text(k_true, k_fit, sprintf("%.2f", cosine_mat[k_fit, k_true]),
+           cex = 0.65)
+    }
+  }
+  box()
+}
+
+plot_recovered_support = function(scores_true_space, main) {
+  recovered = matrix(0, nrow = K_true, ncol = N)
+  for (i in seq_len(N)) {
+    active = order(scores_true_space[i, ], decreasing = TRUE)[
+      seq_len(true_support_size[i])
+    ]
+    recovered[active, i] = 1
+  }
+
+  image(x = seq_len(N), y = seq_len(K_true), z = t(recovered),
+        axes = FALSE, xlab = "Sample", ylab = "Recovered true factor",
+        main = main, col = c("white", "firebrick"))
+  axis(1, at = seq(n_per_group / 2, N, by = n_per_group),
+       labels = paste("G", seq_len(n_groups)))
+  axis(2, at = seq_len(K_true), labels = seq_len(K_true), las = 1)
+  abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
+         col = "gray80", lty = 3)
+  box()
+}
+
+plot_group_factor_heatmap = function(group_factor_mat, main, ylab) {
+  image(x = seq_len(ncol(group_factor_mat)), y = seq_len(nrow(group_factor_mat)),
+        z = t(group_factor_mat), axes = FALSE, xlab = "True factor",
+        ylab = ylab, main = main, col = hcl.colors(100, "YlOrRd"))
+  axis(1, at = seq_len(ncol(group_factor_mat)),
+       labels = seq_len(ncol(group_factor_mat)))
+  axis(2, at = seq_len(nrow(group_factor_mat)),
+       labels = paste("G", seq_len(nrow(group_factor_mat))), las = 1)
+  for (g in seq_len(nrow(group_factor_mat))) {
+    for (k in seq_len(ncol(group_factor_mat))) {
+      text(k, g, sprintf("%.2f", group_factor_mat[g, k]), cex = 0.65)
+    }
+  }
+  box()
+}
+
+plot_rank_heatmap = function(rank_mat, main, ylab, col) {
+  image(x = seq_len(N), y = seq_len(ncol(rank_mat)), z = rank_mat,
+        axes = FALSE, xlab = "Sample", ylab = ylab,
+        main = main, col = col)
+  axis(1, at = seq(n_per_group / 2, N, by = n_per_group),
+       labels = paste("G", seq_len(n_groups)))
+  axis(2, at = seq_len(ncol(rank_mat)), labels = seq_len(ncol(rank_mat)),
+       las = 1)
+  abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
+         col = "gray80", lty = 3)
+  box()
+}
+
+plot_factor_id_heatmap = function(rank_top_factor, main) {
+  image(x = seq_len(N), y = seq_len(ncol(rank_top_factor)),
+        z = rank_top_factor, axes = FALSE, xlab = "Sample",
+        ylab = "Effect rank", main = main, col = seq_len(K_fit))
+  axis(1, at = seq(n_per_group / 2, N, by = n_per_group),
+       labels = paste("G", seq_len(n_groups)))
+  axis(2, at = seq_len(ncol(rank_top_factor)),
+       labels = seq_len(ncol(rank_top_factor)), las = 1)
+  abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
+         col = "gray80", lty = 3)
+  legend("topright", legend = paste("factor", seq_len(K_fit)),
+         fill = seq_len(K_fit), bty = "n", cex = 0.8)
+  box()
+}
+
+plot_single_gamma_heatmap = function(gamma_mat, main) {
+  D = nrow(gamma_mat)
+  K = ncol(gamma_mat)
+  image(x = seq_len(K), y = seq_len(D), z = t(gamma_mat),
+        axes = FALSE, xlab = "Fitted factor", ylab = "Effect rank",
+        main = main, col = hcl.colors(100, "YlOrRd"))
+  axis(1, at = seq_len(K), labels = seq_len(K))
+  axis(2, at = seq_len(D), labels = seq_len(D), las = 1)
+  box()
+}
+
+plot_representative_gamma = function(rank_gamma_bar, representative_idx) {
+  op = par(mfrow = c(2, 3), mar = c(4, 4, 3, 1))
+  on.exit(par(op))
+  for (j in seq_along(representative_idx)) {
+    i = representative_idx[j]
+    plot_single_gamma_heatmap(
+      rank_gamma_bar[i, , ],
+      paste("Group", grp[i], "sample", i)
+    )
+  }
+}
+
+true_support_size = rowSums(L > 0)
+true_support_label = apply(L > 0, 1, function(x) {
+  paste(which(x), collapse = ",")
+})
+```
+
+## Fit Tree Scenario
+
+```{r fit}
+fit = mf_poi_susie(
+  Y = Y,
+  K = K_fit,
+  D = D_fit,
+  max_iters = 100,
+  update_prior = TRUE,
+  break_symmetry = FALSE,
+  init_seed = 1,
+  init_F = "poisson_nmf",
+  nmf_iters = 200,
+  init_gamma_from_nmf = TRUE,
+  gamma_step_init = 0.1,
+  gamma_step_ramp = 50,
+  F_step_init = 0.05,
+  F_step_ramp = 75,
+  elbo_every = 5,
+  tol = 5e-4,
+  min_iters = 20,
+  patience = 2
+)
+```
+
+```{r elbo}
+idx = fit$elbo_iter
+plot(idx, fit$elbo[idx], type = "l", xlab = "Iteration", ylab = "ELBO",
+     main = "Variational objective")
+points(idx, fit$elbo[idx], pch = 19, cex = 0.5)
+
+data.frame(
+  converged = fit$converged,
+  n_iter = fit$n_iter,
+  final_elbo = tail(fit$elbo[fit$elbo_iter], 1)
+)
+```
+
+## Factor Recovery
+
+```{r factor-recovery}
+factor_match = match_factor_rows(fit$F, F0)
+learned_to_true = factor_match$matched_true_factor
+
+factor_match
+
+data.frame(
+  mean_matched_cosine = mean(factor_match$cosine),
+  min_matched_cosine = min(factor_match$cosine)
+)
+```
+
+```{r factor-cosine-heatmap}
+cosine_fit_true = row_cosine(fit$F, F0)
+plot_cosine_heatmap(
+  cosine_fit_true,
+  "Cosine similarity between fitted and true factors"
+)
+```
+
+```{r learned-factor-shapes}
+matplot(t(fit$F[, 1:150]), type = "l", lty = 1,
+        xlab = "m", ylab = "F[k, m]",
+        main = "Learned factor rows")
+legend("topright", legend = paste("fit", seq_len(K_fit)),
+       col = seq_len(K_fit), lty = 1, bty = "n")
+```
+
+## Support Recovery
+
+```{r support-recovery}
+fit_loading_scores = loading_scores(fit)
+fit_pip_scores = posterior_inclusion_scores(fit)
+scores_true_space = map_scores_to_true(fit_loading_scores, learned_to_true)
+pip_true_space = map_scores_to_true(fit_pip_scores, learned_to_true)
+
+sizes = effect_sizes(fit)
+extra_mass = extra_effect_mass_fraction(sizes, true_support_size)
+
+support_recovery = data.frame(
+  exact_support_accuracy = mean(
+    support_labels_from_scores(scores_true_space, true_support_size) ==
+      true_support_label
+  ),
+  mean_normalized_loading_entropy = normalized_entropy(scores_true_space),
+  mean_extra_effect_mass_fraction = mean(extra_mass),
+  median_extra_effect_mass_fraction = median(extra_mass),
+  q90_extra_effect_mass_fraction = as.numeric(quantile(extra_mass, 0.9))
+)
+
+support_recovery
+```
+
+```{r recovered-support-plot}
+plot_recovered_support(
+  scores_true_space,
+  "Recovered supports in the tree scenario"
+)
+```
+
+```{r recovered-patterns-by-group}
+recovered_label = support_labels_from_scores(scores_true_space,
+                                             true_support_size)
+recovered_by_group = do.call(rbind, lapply(seq_len(n_groups), function(g) {
+  tab = table(recovered_label[grp == g])
+  data.frame(group = g, recovered_pattern = names(tab), n = as.integer(tab),
+             row.names = NULL)
+}))
+
+recovered_by_group
+```
+
+## Group-Level Loading Structure
+
+These heatmaps ask whether the fitted model recovers the tree structure after
+matching learned factors to true factors. The first uses expected loading mass;
+the second uses PIPs derived from `gamma_bar`.
+
+```{r group-loading-heatmap}
+group_loading_mean = do.call(rbind, lapply(seq_len(n_groups), function(g) {
+  colMeans(scores_true_space[grp == g, , drop = FALSE])
+}))
+group_loading_share = group_loading_mean / rowSums(group_loading_mean)
+
+plot_group_factor_heatmap(
+  group_loading_share,
+  "Group mean posterior loading share",
+  "Group"
+)
+```
+
+```{r group-pip-heatmap}
+group_pip_mean = do.call(rbind, lapply(seq_len(n_groups), function(g) {
+  colMeans(pip_true_space[grp == g, , drop = FALSE])
+}))
+group_pip_share = group_pip_mean / rowSums(group_pip_mean)
+
+plot_group_factor_heatmap(
+  group_pip_share,
+  "Group mean posterior PIP share",
+  "Group"
+)
+```
+
+```{r branch-contrast}
+branch_scores = data.frame(
+  group = seq_len(n_groups),
+  true_pattern = true_patterns,
+  root_1 = group_loading_share[, 1],
+  branch_2 = group_loading_share[, 2],
+  branch_5 = group_loading_share[, 5],
+  leaf_3 = group_loading_share[, 3],
+  leaf_4 = group_loading_share[, 4],
+  leaf_6 = group_loading_share[, 6],
+  leaf_7 = group_loading_share[, 7]
+)
+
+branch_scores
+```
+
+The hardest separations are expected to be between sibling groups: groups 1 and
+2 share factors 1 and 2 and differ only by factor 3 versus 4; groups 3 and 4
+share factors 1 and 5 and differ only by factor 6 versus 7. Groups 5 and 6 test
+whether the model can recover branch-level supports without any leaf factor.
+
+## Overfitted Effect Behavior
+
+```{r effect-rank-diagnostics}
+gamma_entropy = effect_gamma_entropy(fit)
+max_gamma = effect_max_gamma(fit)
+top_factor = effect_top_factor(fit)
+rank_gamma_bar = rank_gamma_bar_by_size(fit, sizes)
+
+rank_size = rank_by_effect_size(sizes, sizes)
+rank_entropy = rank_by_effect_size(gamma_entropy, sizes)
+rank_max_gamma = rank_by_effect_size(max_gamma, sizes)
+rank_top_factor = rank_by_effect_size(top_factor, sizes)
+
+rank_summary = do.call(rbind, lapply(seq_len(D_fit), function(r) {
+  data.frame(
+    effect_rank = r,
+    mean_expected_size = mean(rank_size[, r]),
+    median_expected_size = median(rank_size[, r]),
+    mean_gamma_entropy = mean(rank_entropy[, r]),
+    median_gamma_entropy = median(rank_entropy[, r]),
+    mean_max_gamma = mean(rank_max_gamma[, r]),
+    median_max_gamma = median(rank_max_gamma[, r]),
+    selected_as_extra_fraction = mean(r > true_support_size)
+  )
+}))
+
+rank_summary
+```
+
+```{r effect-rank-size-boxplot}
+boxplot(
+  split(as.vector(rank_size), col(rank_size)),
+  xlab = "Effect rank within observation",
+  ylab = "Posterior expected effect size",
+  main = "Effect sizes after fitting D = 5"
+)
+abline(v = D_true + 0.5, col = "gray50", lty = 2)
+```
+
+```{r effect-rank-entropy-boxplot}
+boxplot(
+  split(as.vector(rank_entropy), col(rank_entropy)),
+  xlab = "Effect rank within observation",
+  ylab = "Normalized entropy of gamma_bar",
+  main = "Posterior factor-assignment uncertainty by effect rank"
+)
+abline(v = D_true + 0.5, col = "gray50", lty = 2)
+```
+
+```{r effect-rank-size-entropy}
+plot(
+  as.vector(rank_size),
+  as.vector(rank_entropy),
+  pch = 20,
+  col = rgb(0.6, 0, 0, 0.25),
+  xlab = "Posterior expected effect size",
+  ylab = "Normalized entropy of gamma_bar",
+  main = "Effect size versus gamma_bar uncertainty"
+)
+```
+
+```{r effect-rank-size-heatmap}
+plot_rank_heatmap(
+  rank_size,
+  "Posterior expected effect size by rank",
+  "Effect rank",
+  hcl.colors(100, "YlOrRd")
+)
+```
+
+```{r effect-rank-entropy-heatmap}
+plot_rank_heatmap(
+  rank_entropy,
+  "Normalized gamma_bar entropy by effect rank",
+  "Effect rank",
+  hcl.colors(100, "YlGnBu")
+)
+```
+
+```{r effect-rank-top-factor-heatmap}
+plot_factor_id_heatmap(
+  rank_top_factor,
+  "Top posterior fitted factor by effect rank"
+)
+```
+
+## Representative Posterior Assignment Heatmaps
+
+Rows are fitted effects sorted by posterior expected size. Columns are fitted
+factors. Since `D_fit = 5` but the true support size is two or three, the lower
+effect ranks should ideally be small and diffuse.
+
+```{r representative-gamma-heatmaps, fig.width=10, fig.height=6}
+representative_idx = vapply(seq_len(n_groups), function(g) {
+  which(grp == g)[1]
+}, integer(1))
+
+plot_representative_gamma(rank_gamma_bar, representative_idx)
+```
+
+## Interpretation
+
+This setting removes the easiest anchors: no observation group is generated from
+a single factor. Recovery therefore depends on separating factors through shared
+and contrasting co-occurrence patterns. Factor 1 is a root factor present in
+every group; factors 2 and 5 are branch factors; factors 3, 4, 6, and 7 are leaf
+factors that only appear in one group each.
+
+For fixed learned `F`, `gamma_bar` quantifies posterior uncertainty in the
+loading decomposition. In this tree scenario, diffuse `gamma_bar` in lower-ranked
+effects indicates that the extra fitted dimensions are not confidently assigned
+to a factor. Sizable lower-ranked effects with low entropy are more concerning:
+they mean the overspecified `D` is acting as additional confident components,
+which can blur the intended tree support patterns.

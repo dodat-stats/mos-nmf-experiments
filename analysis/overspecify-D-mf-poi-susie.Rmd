@@ -1,0 +1,521 @@
+---
+title: "MF Poisson SuSiE With Overspecified D"
+site: workflowr::wflow_site
+output:
+  workflowr::wflow_html:
+    toc: true
+    toc_float: true
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 7, fig.height = 4)
+```
+
+This page stress-tests the MF-Poisson-SuSiE fit when the number of fitted
+single-effect components is larger than the true sparsity dimension. The main
+question is whether the fitted model still recovers the true supports when it
+has extra effects available, and whether those extra effects carry small
+posterior loading mass.
+
+```{r source-code}
+source("code/joint-learn-susie-poi-F.R")
+```
+
+## Simulate Data
+
+The data-generating mechanism has five true factor rows and at most three active
+effects per observation. The fitted model uses the correct `K` but fits a larger
+`D`.
+
+```{r simulate}
+set.seed(42)
+
+N = 1600
+M = 2000
+K = 5
+D_true = 3
+D_fit = 5
+
+F0 = matrix(rgamma(M * K, shape = 0.1, rate = 0.01), nrow = K, ncol = M)
+F0 = F0 / rowSums(F0)
+
+n_per_group = N / 8
+L = matrix(0, nrow = N, ncol = K)
+grp = rep(1:8, each = n_per_group)
+
+for (g in 1:5) {
+  L[grp == g, g] = matrix(rgamma(n_per_group, 10, 1), n_per_group, 1)
+}
+
+L[grp == 6, c(1, 2, 3)] = matrix(rgamma(n_per_group * 3, 20, 1),
+                                  n_per_group, 3)
+L[grp == 7, c(1, 2, 4)] = matrix(rgamma(n_per_group * 3, 20, 1),
+                                  n_per_group, 3)
+L[grp == 8, c(2, 3, 5)] = matrix(rgamma(n_per_group * 3, 20, 1),
+                                  n_per_group, 3)
+
+rate = L %*% F0
+Y = matrix(rpois(N * M, rate), nrow = N, ncol = M)
+
+data.frame(
+  N = N,
+  M = M,
+  K = K,
+  D_true = D_true,
+  D_fit = D_fit,
+  total_count = sum(Y),
+  nonzero_entries = sum(Y > 0)
+)
+```
+
+```{r true-patterns}
+true_patterns = vapply(1:8, function(g) {
+  paste(which(colSums(L[grp == g, , drop = FALSE]) > 0), collapse = ",")
+}, character(1))
+
+data.frame(group = 1:8, true_active_factors = true_patterns)
+```
+
+## Diagnostics
+
+When `D` is overspecified, raw assignment probabilities can be misleading:
+every fitted effect must choose a factor. We therefore score support recovery
+using posterior expected loading mass,
+\[
+  \sum_d q(\gamma_{id} = k) E_q[\beta_{id} \mid \gamma_{id}=k],
+\]
+so that extra effects with small posterior size have little influence.
+
+```{r diagnostic-helpers}
+row_cosine = function(A, B) {
+  A_norm = sqrt(rowSums(A^2))
+  B_norm = sqrt(rowSums(B^2))
+  (A %*% t(B)) / (A_norm %o% B_norm)
+}
+
+all_permutations = function(x) {
+  if (length(x) == 1) return(matrix(x, nrow = 1))
+  do.call(rbind, lapply(seq_along(x), function(i) {
+    cbind(x[i], all_permutations(x[-i]))
+  }))
+}
+
+match_factor_rows = function(F_hat, F_true) {
+  K = nrow(F_true)
+  similarity = row_cosine(F_hat, F_true)
+  perms = all_permutations(seq_len(K))
+  scores = apply(perms, 1, function(p) {
+    sum(similarity[cbind(seq_len(K), p)])
+  })
+  learned_to_true = perms[which.max(scores), ]
+
+  data.frame(
+    learned_factor = seq_len(K),
+    matched_true_factor = learned_to_true,
+    cosine = similarity[cbind(seq_len(K), learned_to_true)]
+  )
+}
+
+loading_scores = function(fit) {
+  E_beta = fit$alpha / fit$lambda
+  apply(fit$gamma_bar * E_beta, c(1, 3), sum)
+}
+
+effect_sizes = function(fit) {
+  E_beta = fit$alpha / fit$lambda
+  rowSums(fit$gamma_bar * E_beta, dims = 2)
+}
+
+effect_gamma_entropy = function(fit) {
+  entropy = -fit$gamma_bar * log(fit$gamma_bar)
+  entropy[is.nan(entropy)] = 0
+  rowSums(entropy, dims = 2) / log(dim(fit$gamma_bar)[3])
+}
+
+effect_max_gamma = function(fit) {
+  apply(fit$gamma_bar, c(1, 2), max)
+}
+
+effect_top_factor = function(fit) {
+  apply(fit$gamma_bar, c(1, 2), which.max)
+}
+
+rank_by_effect_size = function(effect_mat, size_mat) {
+  out = matrix(0, nrow = nrow(effect_mat), ncol = ncol(effect_mat))
+  for (i in seq_len(nrow(effect_mat))) {
+    ord = order(size_mat[i, ], decreasing = TRUE)
+    out[i, ] = effect_mat[i, ord]
+  }
+  out
+}
+
+rank_gamma_bar_by_size = function(fit, size_mat) {
+  N = dim(fit$gamma_bar)[1]
+  D = dim(fit$gamma_bar)[2]
+  K = dim(fit$gamma_bar)[3]
+  out = array(0, dim = c(N, D, K))
+  for (i in seq_len(N)) {
+    ord = order(size_mat[i, ], decreasing = TRUE)
+    out[i, , ] = fit$gamma_bar[i, ord, ]
+  }
+  out
+}
+
+map_scores_to_true = function(scores, learned_to_true) {
+  K = length(learned_to_true)
+  out = matrix(0, nrow = nrow(scores), ncol = K)
+  for (k in seq_len(K)) {
+    out[, learned_to_true[k]] = out[, learned_to_true[k]] + scores[, k]
+  }
+  out
+}
+
+support_labels_from_scores = function(scores, support_sizes) {
+  vapply(seq_len(nrow(scores)), function(i) {
+    active = order(scores[i, ], decreasing = TRUE)[seq_len(support_sizes[i])]
+    paste(sort(active), collapse = ",")
+  }, character(1))
+}
+
+normalized_entropy = function(scores) {
+  prob = scores / rowSums(scores)
+  entropy = -prob * log(prob)
+  entropy[is.nan(entropy)] = 0
+  mean(rowSums(entropy)) / log(ncol(scores))
+}
+
+extra_effect_mass_fraction = function(fit, true_support_size) {
+  sizes = effect_sizes(fit)
+  vapply(seq_len(nrow(sizes)), function(i) {
+    sorted_sizes = sort(sizes[i, ], decreasing = TRUE)
+    extra_idx = seq.int(true_support_size[i] + 1, length(sorted_sizes))
+    sum(sorted_sizes[extra_idx]) / sum(sorted_sizes)
+  }, numeric(1))
+}
+
+plot_recovered_support = function(scores_true_space, main) {
+  recovered = matrix(0, nrow = K, ncol = N)
+  for (i in seq_len(N)) {
+    active = order(scores_true_space[i, ], decreasing = TRUE)[
+      seq_len(true_support_size[i])
+    ]
+    recovered[active, i] = 1
+  }
+
+  image(x = seq_len(N), y = seq_len(K), z = t(recovered),
+        axes = FALSE, xlab = "Sample", ylab = "Recovered true factor",
+        main = main, col = c("white", "firebrick"))
+  axis(1, at = seq(n_per_group / 2, N, by = n_per_group),
+       labels = paste("G", 1:8))
+  axis(2, at = seq_len(K), labels = seq_len(K), las = 1)
+  abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
+         col = "gray80", lty = 3)
+  box()
+}
+
+plot_rank_heatmap = function(rank_mat, main, ylab, col) {
+  image(x = seq_len(N), y = seq_len(ncol(rank_mat)), z = rank_mat,
+        axes = FALSE, xlab = "Sample", ylab = ylab,
+        main = main, col = col)
+  axis(1, at = seq(n_per_group / 2, N, by = n_per_group),
+       labels = paste("G", 1:8))
+  axis(2, at = seq_len(ncol(rank_mat)), labels = seq_len(ncol(rank_mat)),
+       las = 1)
+  abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
+         col = "gray80", lty = 3)
+  box()
+}
+
+plot_factor_id_heatmap = function(rank_top_factor, main) {
+  image(x = seq_len(N), y = seq_len(ncol(rank_top_factor)), z = rank_top_factor,
+        axes = FALSE, xlab = "Sample", ylab = "Effect rank",
+        main = main, col = seq_len(K))
+  axis(1, at = seq(n_per_group / 2, N, by = n_per_group),
+       labels = paste("G", 1:8))
+  axis(2, at = seq_len(ncol(rank_top_factor)),
+       labels = seq_len(ncol(rank_top_factor)), las = 1)
+  abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
+         col = "gray80", lty = 3)
+  legend("topright", legend = paste("factor", seq_len(K)), fill = seq_len(K),
+         bty = "n", cex = 0.8)
+  box()
+}
+
+plot_single_gamma_heatmap = function(gamma_mat, main) {
+  D = nrow(gamma_mat)
+  K = ncol(gamma_mat)
+  image(x = seq_len(K), y = seq_len(D), z = t(gamma_mat),
+        axes = FALSE, xlab = "Factor", ylab = "Effect rank",
+        main = main, col = hcl.colors(100, "YlOrRd"))
+  axis(1, at = seq_len(K), labels = seq_len(K))
+  axis(2, at = seq_len(D), labels = seq_len(D), las = 1)
+  box()
+}
+
+plot_representative_gamma = function(rank_gamma_bar, representative_idx) {
+  op = par(mfrow = c(2, 4), mar = c(4, 4, 3, 1))
+  on.exit(par(op))
+  for (j in seq_along(representative_idx)) {
+    i = representative_idx[j]
+    plot_single_gamma_heatmap(
+      rank_gamma_bar[i, , ],
+      paste("Group", grp[i], "sample", i)
+    )
+  }
+}
+
+true_support_size = rowSums(L > 0)
+true_support_label = apply(L > 0, 1, function(x) {
+  paste(which(x), collapse = ",")
+})
+```
+
+## Fit Overspecified D
+
+```{r fit}
+fit = mf_poi_susie(
+  Y = Y,
+  K = K,
+  D = D_fit,
+  max_iters = 100,
+  update_prior = TRUE,
+  break_symmetry = FALSE,
+  init_seed = 1,
+  init_F = "poisson_nmf",
+  nmf_iters = 200,
+  init_gamma_from_nmf = TRUE,
+  gamma_step_init = 0.1,
+  gamma_step_ramp = 50,
+  F_step_init = 0.05,
+  F_step_ramp = 75,
+  elbo_every = 5,
+  tol = 5e-4,
+  min_iters = 20,
+  patience = 2
+)
+```
+
+```{r elbo}
+idx = fit$elbo_iter
+plot(idx, fit$elbo[idx], type = "l", xlab = "Iteration", ylab = "ELBO",
+     main = "Variational objective")
+points(idx, fit$elbo[idx], pch = 19, cex = 0.5)
+
+data.frame(
+  converged = fit$converged,
+  n_iter = fit$n_iter,
+  final_elbo = tail(fit$elbo[fit$elbo_iter], 1)
+)
+```
+
+## Factor Recovery
+
+```{r factor-recovery}
+factor_match = match_factor_rows(fit$F, F0)
+learned_to_true = factor_match$matched_true_factor
+
+factor_match
+
+data.frame(
+  mean_matched_cosine = mean(factor_match$cosine),
+  min_matched_cosine = min(factor_match$cosine)
+)
+```
+
+## Support And Extra-Effect Diagnostics
+
+```{r support-recovery}
+scores_true_space = map_scores_to_true(loading_scores(fit), learned_to_true)
+extra_mass = extra_effect_mass_fraction(fit, true_support_size)
+
+support_recovery = data.frame(
+  exact_support_accuracy = mean(
+    support_labels_from_scores(scores_true_space, true_support_size) ==
+      true_support_label
+  ),
+  mean_normalized_loading_entropy = normalized_entropy(scores_true_space),
+  mean_extra_effect_mass_fraction = mean(extra_mass),
+  median_extra_effect_mass_fraction = median(extra_mass),
+  q90_extra_effect_mass_fraction = as.numeric(quantile(extra_mass, 0.9))
+)
+
+support_recovery
+```
+
+```{r extra-effect-by-group}
+extra_effect_by_group = aggregate(
+  extra_mass,
+  by = list(group = grp),
+  FUN = function(x) {
+    c(mean = mean(x), median = median(x), q90 = quantile(x, 0.9))
+  }
+)
+extra_effect_by_group = do.call(data.frame, extra_effect_by_group)
+names(extra_effect_by_group) = c("group", "mean", "median", "q90")
+
+extra_effect_by_group
+```
+
+```{r recovered-factors}
+plot_recovered_support(
+  scores_true_space,
+  "Recovered supports with overspecified D"
+)
+```
+
+```{r effect-size-plot}
+sizes = effect_sizes(fit)
+sorted_sizes = t(apply(sizes, 1, sort, decreasing = TRUE))
+
+boxplot(
+  split(as.vector(sorted_sizes), col(sorted_sizes)),
+  xlab = "Effect rank within observation",
+  ylab = "Posterior expected effect size",
+  main = "Effect sizes after overspecifying D"
+)
+```
+
+## Behavior Of The Extra Effects
+
+Because fitted effects are exchangeable, we sort the `D_fit` effects within each
+observation by posterior expected effect size. Rank 1 is the largest fitted
+effect for that observation, and ranks beyond the true support size are the
+overfitted dimensions.
+
+```{r effect-rank-diagnostics}
+sizes = effect_sizes(fit)
+gamma_entropy = effect_gamma_entropy(fit)
+max_gamma = effect_max_gamma(fit)
+top_factor = effect_top_factor(fit)
+rank_gamma_bar = rank_gamma_bar_by_size(fit, sizes)
+
+rank_size = rank_by_effect_size(sizes, sizes)
+rank_entropy = rank_by_effect_size(gamma_entropy, sizes)
+rank_max_gamma = rank_by_effect_size(max_gamma, sizes)
+rank_top_factor = rank_by_effect_size(top_factor, sizes)
+
+rank_summary = do.call(rbind, lapply(seq_len(D_fit), function(r) {
+  data.frame(
+    effect_rank = r,
+    mean_expected_size = mean(rank_size[, r]),
+    median_expected_size = median(rank_size[, r]),
+    mean_gamma_entropy = mean(rank_entropy[, r]),
+    median_gamma_entropy = median(rank_entropy[, r]),
+    mean_max_gamma = mean(rank_max_gamma[, r]),
+    median_max_gamma = median(rank_max_gamma[, r]),
+    selected_as_extra_fraction = mean(r > true_support_size)
+  )
+}))
+
+rank_summary
+```
+
+```{r effect-rank-entropy-boxplot}
+boxplot(
+  split(as.vector(rank_entropy), col(rank_entropy)),
+  xlab = "Effect rank within observation",
+  ylab = "Normalized entropy of gamma_bar",
+  main = "Posterior factor-assignment uncertainty by effect rank"
+)
+abline(v = D_true + 0.5, col = "gray50", lty = 2)
+```
+
+```{r effect-rank-size-entropy}
+plot(
+  as.vector(rank_size),
+  as.vector(rank_entropy),
+  pch = 20,
+  col = rgb(0.6, 0, 0, 0.25),
+  xlab = "Posterior expected effect size",
+  ylab = "Normalized entropy of gamma_bar",
+  main = "Small extra effects tend to have diffuse gamma_bar"
+)
+```
+
+The boxplot and scatterplot ask whether overfitted dimensions are being used as
+real effects or left diffuse. High entropy means an effect has no clear factor
+assignment. Small size with high entropy is the cleanest behavior for an
+overfitted dimension: the effect exists in the variational family but does not
+carry much loading mass.
+
+```{r effect-rank-size-heatmap}
+plot_rank_heatmap(
+  rank_size,
+  "Posterior expected effect size by rank",
+  "Effect rank",
+  hcl.colors(100, "YlOrRd")
+)
+```
+
+```{r effect-rank-entropy-heatmap}
+plot_rank_heatmap(
+  rank_entropy,
+  "Normalized gamma_bar entropy by effect rank",
+  "Effect rank",
+  hcl.colors(100, "YlGnBu")
+)
+```
+
+```{r effect-rank-max-gamma-heatmap}
+plot_rank_heatmap(
+  rank_max_gamma,
+  "Maximum gamma_bar probability by effect rank",
+  "Effect rank",
+  hcl.colors(100, "YlOrRd")
+)
+```
+
+```{r effect-rank-top-factor-heatmap}
+plot_factor_id_heatmap(
+  rank_top_factor,
+  "Top posterior factor by effect rank"
+)
+```
+
+The entropy heatmap and maximum-probability heatmap are complementary. A diffuse
+extra effect should have high entropy and low maximum `gamma_bar`. The top-factor
+heatmap shows what factor would be selected if we forced every overfitted effect
+to choose a label; this plot should be interpreted together with the entropy and
+size heatmaps, because a top label is not meaningful when `gamma_bar` is nearly
+uniform.
+
+## Representative Posterior Assignment Heatmaps
+
+The following heatmaps mimic the single-observation view in `poisson-susie.Rmd`,
+but for representative observations from each group. Rows are fitted effects
+sorted by posterior expected size. Columns are factors. Extra low-size effects
+should appear more diffuse across factors than the leading effects.
+
+```{r representative-gamma-heatmaps, fig.width=10, fig.height=6}
+representative_idx = vapply(seq_len(8), function(g) {
+  which(grp == g)[1]
+}, integer(1))
+
+plot_representative_gamma(rank_gamma_bar, representative_idx)
+```
+
+## Interpreting Overfitted D
+
+For fixed learned `F`, `gamma_bar[i, d, k]` quantifies posterior uncertainty in
+which factor receives effect `d` for observation `i`. When `D` is overspecified,
+there are more effects than the true loading support needs. A well-behaved fit
+can handle this in two ways: extra effects can have small expected size, or they
+can remain diffuse in `gamma_bar` so that no factor receives strong posterior
+support from them.
+
+The most useful summaries here are therefore effect size and entropy together.
+Expected effect size,
+\[
+  E_q[\beta_{id}] =
+  \sum_k \bar\gamma_{idk} E_q[\beta_{id} \mid \gamma_{id}=k],
+\]
+measures whether effect `d` carries meaningful loading mass. Normalized entropy
+of `gamma_bar[i, d, ]` measures whether the factor identity of that effect is
+resolved. Extra dimensions are benign when they have low expected size, high
+assignment entropy, or both. They are problematic when they have sizable
+expected loading mass and low entropy, because then the overfitted dimension is
+acting like an additional confident component rather than an uncertain residual
+effect.

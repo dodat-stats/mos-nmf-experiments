@@ -1,0 +1,381 @@
+---
+title: "Alternating MoS Poisson SuSiE Updates"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 7, fig.height = 4)
+```
+
+This file tests the alternating hard-motif MoS-Poisson-SuSiE update. Both
+comparisons use the same MF-Poisson-SuSiE initialization. The frozen fit keeps
+the initialized `F` and motifs fixed; the alternating fit updates both `F` and
+hard motifs inside the MoS loop.
+
+```{r source-code}
+source("code/mos-poi-susie.R")
+```
+
+## Helpers
+
+```{r helpers}
+row_cosine = function(A, B) {
+  A_norm = sqrt(rowSums(A^2))
+  B_norm = sqrt(rowSums(B^2))
+  (A %*% t(B)) / (A_norm %o% B_norm)
+}
+
+all_permutations = function(x) {
+  if (length(x) == 1) return(matrix(x, nrow = 1))
+  do.call(rbind, lapply(seq_along(x), function(i) {
+    cbind(x[i], all_permutations(x[-i]))
+  }))
+}
+
+match_factor_rows = function(F_hat, F_true) {
+  K = nrow(F_true)
+  similarity = row_cosine(F_hat, F_true)
+  perms = all_permutations(seq_len(K))
+  scores = apply(perms, 1, function(p) {
+    sum(similarity[cbind(seq_len(K), p)])
+  })
+  learned_to_true = perms[which.max(scores), ]
+
+  list(
+    table = data.frame(
+      learned_factor = seq_len(K),
+      matched_true_factor = learned_to_true,
+      cosine = similarity[cbind(seq_len(K), learned_to_true)]
+    ),
+    learned_to_true = learned_to_true,
+    similarity = similarity
+  )
+}
+
+support_label = function(support) paste(sort(unique(support)), collapse = ",")
+
+simulate_support_scenario = function(N, M, K, group_supports, shape_vec,
+                                      factor_shape = 0.1,
+                                      factor_rate = 0.01, seed = 1) {
+  set.seed(seed)
+  S = length(group_supports)
+  n_per_group = N / S
+  grp = rep(seq_len(S), each = n_per_group)
+
+  F0 = matrix(rgamma(M * K, shape = factor_shape, rate = factor_rate),
+              nrow = K, ncol = M)
+  F0 = normalize_rows(F0)
+
+  L = matrix(0, nrow = N, ncol = K)
+  for (s in seq_len(S)) {
+    idx = which(grp == s)
+    support = group_supports[[s]]
+    L[idx, support] = matrix(
+      rgamma(length(idx) * length(support), shape = shape_vec[s], rate = 1),
+      nrow = length(idx),
+      ncol = length(support)
+    )
+  }
+
+  Y = matrix(rpois(N * M, L %*% F0), nrow = N, ncol = M)
+
+  list(
+    Y = Y,
+    F0 = F0,
+    L = L,
+    grp = grp,
+    group_supports = group_supports,
+    true_patterns = vapply(group_supports, support_label, character(1))
+  )
+}
+
+translate_motifs_to_true_space = function(motifs, learned_to_true) {
+  matrix(learned_to_true[motifs], nrow = nrow(motifs), ncol = ncol(motifs))
+}
+
+fit_frozen_and_alternating = function(dat, K, S, D, init_seed,
+                                      mf_max_iters = 50,
+                                      mf_nmf_iters = 80,
+                                      mos_max_iters = 25,
+                                      n_inner = 5) {
+  mf_fit = mf_poi_susie(
+    Y = dat$Y,
+    K = K,
+    D = D,
+    max_iters = mf_max_iters,
+    update_prior = TRUE,
+    init_seed = init_seed,
+    init_F = "poisson_nmf",
+    nmf_iters = mf_nmf_iters,
+    init_gamma_from_nmf = TRUE,
+    elbo_every = 5,
+    tol = 5e-4,
+    min_iters = 15,
+    patience = 2
+  )
+
+  motif_init = init_motifs_from_loading_scores(
+    loading_scores_from_mf(mf_fit),
+    S = S,
+    D = D,
+    init_seed = init_seed
+  )
+
+  frozen = mos_poi_susie_fixed_motifs(
+    Y = dat$Y,
+    F = mf_fit$F,
+    motifs = motif_init$motifs,
+    max_iters = mos_max_iters,
+    n_inner = n_inner,
+    update_prior = TRUE,
+    update_F = FALSE,
+    update_motifs = FALSE,
+    tol = 1e-5,
+    min_iters = 5,
+    patience = 2
+  )
+
+  alternating = mos_poi_susie_fixed_motifs(
+    Y = dat$Y,
+    F = mf_fit$F,
+    motifs = motif_init$motifs,
+    max_iters = mos_max_iters,
+    n_inner = n_inner,
+    update_prior = TRUE,
+    update_F = TRUE,
+    update_motifs = TRUE,
+    motif_update_every = 1,
+    F_step_init = 0.2,
+    F_step_ramp = 15,
+    tol = 1e-5,
+    min_iters = 5,
+    patience = 2
+  )
+
+  list(mf_fit = mf_fit, motif_init = motif_init, frozen = frozen,
+       alternating = alternating)
+}
+
+summarize_one_fit = function(name, fit, z_true, F0, motif_init) {
+  factor_match = match_factor_rows(fit$F, F0)
+  data.frame(
+    fit = name,
+    converged = fit$converged,
+    n_iter = fit$n_iter,
+    final_elbo = tail(fit$elbo[!is.na(fit$elbo)], 1),
+    cluster_accuracy = cluster_accuracy(fit$z_hat, z_true),
+    mean_max_responsibility = mean(apply(fit$omega, 1, max)),
+    mean_factor_cosine = mean(factor_match$table$cosine),
+    min_factor_cosine = min(factor_match$table$cosine),
+    motif_slot_changes = sum(fit$motifs != motif_init$motifs)
+  )
+}
+
+summarize_pair = function(pair, dat) {
+  rbind(
+    summarize_one_fit("frozen", pair$frozen, dat$grp, dat$F0,
+                      pair$motif_init),
+    summarize_one_fit("alternating", pair$alternating, dat$grp, dat$F0,
+                      pair$motif_init)
+  )
+}
+
+motif_table = function(fit, F0, label) {
+  factor_match = match_factor_rows(fit$F, F0)
+  motifs_true = translate_motifs_to_true_space(fit$motifs,
+                                               factor_match$learned_to_true)
+  data.frame(
+    fit = label,
+    fitted_submanifold = seq_len(nrow(fit$motifs)),
+    motif_in_fitted_factor_space = apply(fit$motifs, 1, support_label),
+    motif_mapped_to_true_factor_space = apply(motifs_true, 1, support_label)
+  )
+}
+
+plot_group_responsibilities = function(omega, grp, main) {
+  group_resp = do.call(rbind, lapply(sort(unique(grp)), function(g) {
+    colMeans(omega[grp == g, , drop = FALSE])
+  }))
+
+  image(x = seq_len(ncol(group_resp)), y = seq_len(nrow(group_resp)),
+        z = t(group_resp), axes = FALSE, xlab = "Fitted submanifold",
+        ylab = "True group", main = main, col = hcl.colors(100, "YlOrRd"))
+  axis(1, at = seq_len(ncol(group_resp)),
+       labels = paste0("S", seq_len(ncol(group_resp))))
+  axis(2, at = seq_len(nrow(group_resp)),
+       labels = paste0("G", seq_len(nrow(group_resp))), las = 1)
+  for (g in seq_len(nrow(group_resp))) {
+    for (s in seq_len(ncol(group_resp))) {
+      text(s, g, sprintf("%.2f", group_resp[g, s]), cex = 0.65)
+    }
+  }
+  box()
+}
+
+plot_cosine_heatmap = function(similarity, main) {
+  image(x = seq_len(ncol(similarity)), y = seq_len(nrow(similarity)),
+        z = t(similarity), axes = FALSE, xlab = "True factor",
+        ylab = "Fitted factor", main = main, col = hcl.colors(100, "YlOrRd"))
+  axis(1, at = seq_len(ncol(similarity)),
+       labels = paste0("true ", seq_len(ncol(similarity))))
+  axis(2, at = seq_len(nrow(similarity)),
+       labels = paste0("fit ", seq_len(nrow(similarity))), las = 1)
+  for (i in seq_len(nrow(similarity))) {
+    for (j in seq_len(ncol(similarity))) {
+      text(j, i, sprintf("%.2f", similarity[i, j]), cex = 0.65)
+    }
+  }
+  box()
+}
+```
+
+## Block Scenario
+
+```{r block-simulate}
+block_supports = list(
+  c(1),
+  c(2),
+  c(3),
+  c(4),
+  c(5),
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(2, 3, 5)
+)
+
+block = simulate_support_scenario(
+  N = 480,
+  M = 500,
+  K = 5,
+  group_supports = block_supports,
+  shape_vec = c(rep(10, 5), rep(20, 3)),
+  seed = 42
+)
+
+data.frame(group = seq_along(block_supports),
+           true_active_factors = block$true_patterns)
+```
+
+```{r block-fit}
+block_pair = fit_frozen_and_alternating(
+  dat = block,
+  K = 5,
+  S = length(block_supports),
+  D = 3,
+  init_seed = 1,
+  mf_max_iters = 50,
+  mf_nmf_iters = 80,
+  mos_max_iters = 25,
+  n_inner = 5
+)
+
+summarize_pair(block_pair, block)
+```
+
+```{r block-motifs}
+rbind(
+  motif_table(block_pair$frozen, block$F0, "frozen"),
+  motif_table(block_pair$alternating, block$F0, "alternating")
+)
+```
+
+```{r block-plots}
+plot_group_responsibilities(
+  block_pair$frozen$omega,
+  block$grp,
+  "Block scenario: frozen MoS responsibilities"
+)
+
+plot_group_responsibilities(
+  block_pair$alternating$omega,
+  block$grp,
+  "Block scenario: alternating MoS responsibilities"
+)
+
+plot_cosine_heatmap(
+  match_factor_rows(block_pair$alternating$F, block$F0)$similarity,
+  "Block scenario: alternating fitted and true factor cosine"
+)
+```
+
+## Tree Scenario
+
+```{r tree-simulate}
+tree_supports = list(
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(1, 5, 6),
+  c(1, 5, 7),
+  c(1, 2),
+  c(1, 5)
+)
+
+tree = simulate_support_scenario(
+  N = 480,
+  M = 600,
+  K = 7,
+  group_supports = tree_supports,
+  shape_vec = rep(18, length(tree_supports)),
+  seed = 47
+)
+
+data.frame(group = seq_along(tree_supports),
+           true_active_factors = tree$true_patterns)
+```
+
+```{r tree-fit}
+tree_pair = fit_frozen_and_alternating(
+  dat = tree,
+  K = 7,
+  S = length(tree_supports),
+  D = 3,
+  init_seed = 2,
+  mf_max_iters = 60,
+  mf_nmf_iters = 100,
+  mos_max_iters = 25,
+  n_inner = 5
+)
+
+summarize_pair(tree_pair, tree)
+```
+
+```{r tree-motifs}
+rbind(
+  motif_table(tree_pair$frozen, tree$F0, "frozen"),
+  motif_table(tree_pair$alternating, tree$F0, "alternating")
+)
+```
+
+```{r tree-plots}
+plot_group_responsibilities(
+  tree_pair$frozen$omega,
+  tree$grp,
+  "Tree scenario: frozen MoS responsibilities"
+)
+
+plot_group_responsibilities(
+  tree_pair$alternating$omega,
+  tree$grp,
+  "Tree scenario: alternating MoS responsibilities"
+)
+
+plot_cosine_heatmap(
+  match_factor_rows(tree_pair$alternating$F, tree$F0)$similarity,
+  "Tree scenario: alternating fitted and true factor cosine"
+)
+```
+
+## Takeaway
+
+This is still a hard-motif coordinate method. A useful result here is not that
+the ELBO is perfectly monotone, but that updating `F` and motifs from a good MF
+initialization improves or preserves clustering and gives more coherent
+submanifold motifs. If alternating hard motifs starts to reinforce a bad
+initialization, the next step is the soft submanifold motif posterior from the
+full model.

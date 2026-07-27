@@ -1,0 +1,468 @@
+---
+title: "Soft-Gamma MoS-NMF Alternating Updates"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 7, fig.height = 4)
+```
+
+This file tests the soft-gamma MoS-NMF model. The fitted motif is no longer a
+hard matrix of factor labels. Instead, each submanifold slot has
+`gamma_bar[s, d, k]`, the posterior probability that motif slot `d` in
+submanifold `s` uses factor `k`.
+
+The local Jensen allocation `xi[i, s, d, m]` is still observation-specific, but
+the implementation streams it over feature blocks. It only stores sufficient
+statistics, so the full `N x S x D x M` tensor is never materialized.
+
+```{r source-code}
+source("code/mos-nmf.R")
+```
+
+## Helpers
+
+```{r helpers}
+row_cosine = function(A, B) {
+  A_norm = sqrt(rowSums(A^2))
+  B_norm = sqrt(rowSums(B^2))
+  (A %*% t(B)) / (A_norm %o% B_norm)
+}
+
+all_permutations = function(x) {
+  if (length(x) == 1) return(matrix(x, nrow = 1))
+  do.call(rbind, lapply(seq_along(x), function(i) {
+    cbind(x[i], all_permutations(x[-i]))
+  }))
+}
+
+match_factor_rows = function(F_hat, F_true) {
+  K = nrow(F_true)
+  similarity = row_cosine(F_hat, F_true)
+  perms = all_permutations(seq_len(K))
+  scores = apply(perms, 1, function(p) {
+    sum(similarity[cbind(seq_len(K), p)])
+  })
+  learned_to_true = perms[which.max(scores), ]
+
+  list(
+    table = data.frame(
+      learned_factor = seq_len(K),
+      matched_true_factor = learned_to_true,
+      cosine = similarity[cbind(seq_len(K), learned_to_true)]
+    ),
+    learned_to_true = learned_to_true,
+    similarity = similarity
+  )
+}
+
+support_label = function(support) paste(sort(unique(support)), collapse = ",")
+
+simulate_support_scenario = function(N, M, K, group_supports, shape_vec,
+                                      factor_shape = 0.1,
+                                      factor_rate = 0.01, seed = 1) {
+  set.seed(seed)
+  S = length(group_supports)
+  n_per_group = N / S
+  grp = rep(seq_len(S), each = n_per_group)
+
+  F0 = matrix(rgamma(M * K, shape = factor_shape, rate = factor_rate),
+              nrow = K, ncol = M)
+  F0 = normalize_rows(F0)
+
+  L = matrix(0, nrow = N, ncol = K)
+  for (s in seq_len(S)) {
+    idx = which(grp == s)
+    support = group_supports[[s]]
+    L[idx, support] = matrix(
+      rgamma(length(idx) * length(support), shape = shape_vec[s], rate = 1),
+      nrow = length(idx),
+      ncol = length(support)
+    )
+  }
+
+  Y = matrix(rpois(N * M, L %*% F0), nrow = N, ncol = M)
+
+  list(
+    Y = Y,
+    F0 = F0,
+    L = L,
+    grp = grp,
+    group_supports = group_supports,
+    true_patterns = vapply(group_supports, support_label, character(1))
+  )
+}
+
+map_scores_to_true = function(scores, learned_to_true) {
+  K = length(learned_to_true)
+  out = matrix(0, nrow = nrow(scores), ncol = K)
+  for (k in seq_len(K)) {
+    out[, learned_to_true[k]] = out[, learned_to_true[k]] + scores[, k]
+  }
+  out
+}
+
+fit_soft_pair = function(dat, K, S, D, init_seed,
+                         mf_max_iters = 50,
+                         mf_nmf_iters = 80,
+                         mos_max_iters = 25,
+                         n_inner = 4,
+                         block_size = 100) {
+  mf_fit = mf_poi_susie(
+    Y = dat$Y,
+    K = K,
+    D = D,
+    max_iters = mf_max_iters,
+    update_prior = TRUE,
+    init_seed = init_seed,
+    init_F = "poisson_nmf",
+    nmf_iters = mf_nmf_iters,
+    init_gamma_from_nmf = TRUE,
+    elbo_every = 5,
+    tol = 5e-4,
+    min_iters = 15,
+    patience = 2
+  )
+
+  gamma_init = init_soft_gamma_from_loading_scores(
+    loading_scores_from_mf(mf_fit),
+    S = S,
+    D = D,
+    init_seed = init_seed,
+    min_share = 0.10,
+    gamma_floor = 0.05
+  )
+
+  fixed_F = mos_nmf_fixed_gamma(
+    Y = dat$Y,
+    F = mf_fit$F,
+    gamma_bar = gamma_init$gamma_bar,
+    max_iters = mos_max_iters,
+    n_inner = n_inner,
+    update_prior = TRUE,
+    update_F = FALSE,
+    update_gamma = TRUE,
+    gamma_step_init = 0.5,
+    gamma_step_ramp = 8,
+    tol = 1e-5,
+    min_iters = 5,
+    patience = 2,
+    block_size = block_size
+  )
+
+  alternating = mos_nmf_fixed_gamma(
+    Y = dat$Y,
+    F = mf_fit$F,
+    gamma_bar = gamma_init$gamma_bar,
+    max_iters = mos_max_iters,
+    n_inner = n_inner,
+    update_prior = TRUE,
+    update_F = TRUE,
+    update_gamma = TRUE,
+    gamma_step_init = 0.5,
+    gamma_step_ramp = 8,
+    F_step_init = 0.2,
+    F_step_ramp = 15,
+    tol = 1e-5,
+    min_iters = 5,
+    patience = 2,
+    block_size = block_size
+  )
+
+  list(mf_fit = mf_fit, gamma_init = gamma_init,
+       fixed_F = fixed_F, alternating = alternating)
+}
+
+summarize_one_fit = function(name, fit, z_true, F0) {
+  factor_match = match_factor_rows(fit$F, F0)
+  ent = motif_gamma_entropy(fit$gamma_bar)
+  data.frame(
+    fit = name,
+    converged = fit$converged,
+    n_iter = fit$n_iter,
+    final_elbo = tail(fit$elbo[!is.na(fit$elbo)], 1),
+    cluster_accuracy = cluster_accuracy(fit$z_hat, z_true),
+    mean_max_responsibility = mean(apply(fit$omega, 1, max)),
+    mean_factor_cosine = mean(factor_match$table$cosine),
+    min_factor_cosine = min(factor_match$table$cosine),
+    mean_motif_entropy = mean(ent),
+    max_motif_entropy = max(ent)
+  )
+}
+
+summarize_pair = function(pair, dat) {
+  rbind(
+    summarize_one_fit("soft fixed F", pair$fixed_F, dat$grp, dat$F0),
+    summarize_one_fit("soft alternating F", pair$alternating, dat$grp, dat$F0)
+  )
+}
+
+motif_score_table = function(fit, F0, label, top_n = 3) {
+  factor_match = match_factor_rows(fit$F, F0)
+  scores = motif_factor_scores(fit)$scores
+  true_scores = map_scores_to_true(scores, factor_match$learned_to_true)
+
+  do.call(rbind, lapply(seq_len(nrow(true_scores)), function(s) {
+    ord = order(true_scores[s, ], decreasing = TRUE)[seq_len(top_n)]
+    data.frame(
+      fit = label,
+      fitted_submanifold = s,
+      top_true_factors = paste(ord, collapse = ","),
+      top_scores = paste(sprintf("%.2f", true_scores[s, ord]),
+                         collapse = ",")
+    )
+  }))
+}
+
+plot_group_responsibilities = function(omega, grp, main) {
+  group_resp = do.call(rbind, lapply(sort(unique(grp)), function(g) {
+    colMeans(omega[grp == g, , drop = FALSE])
+  }))
+
+  image(x = seq_len(ncol(group_resp)), y = seq_len(nrow(group_resp)),
+        z = t(group_resp), axes = FALSE, xlab = "Fitted submanifold",
+        ylab = "True group", main = main, col = hcl.colors(100, "YlOrRd"))
+  axis(1, at = seq_len(ncol(group_resp)),
+       labels = paste0("S", seq_len(ncol(group_resp))))
+  axis(2, at = seq_len(nrow(group_resp)),
+       labels = paste0("G", seq_len(nrow(group_resp))), las = 1)
+  for (g in seq_len(nrow(group_resp))) {
+    for (s in seq_len(ncol(group_resp))) {
+      text(s, g, sprintf("%.2f", group_resp[g, s]), cex = 0.65)
+    }
+  }
+  box()
+}
+
+plot_cosine_heatmap = function(similarity, main) {
+  image(x = seq_len(ncol(similarity)), y = seq_len(nrow(similarity)),
+        z = t(similarity), axes = FALSE, xlab = "True factor",
+        ylab = "Fitted factor", main = main, col = hcl.colors(100, "YlOrRd"))
+  axis(1, at = seq_len(ncol(similarity)),
+       labels = paste0("true ", seq_len(ncol(similarity))))
+  axis(2, at = seq_len(nrow(similarity)),
+       labels = paste0("fit ", seq_len(nrow(similarity))), las = 1)
+  for (i in seq_len(nrow(similarity))) {
+    for (j in seq_len(ncol(similarity))) {
+      text(j, i, sprintf("%.2f", similarity[i, j]), cex = 0.65)
+    }
+  }
+  box()
+}
+
+plot_motif_scores = function(fit, F0, main) {
+  factor_match = match_factor_rows(fit$F, F0)
+  scores = motif_factor_scores(fit)$scores
+  true_scores = map_scores_to_true(scores, factor_match$learned_to_true)
+  true_scores = true_scores / pmax(rowSums(true_scores), 1e-12)
+
+  image(x = seq_len(ncol(true_scores)), y = seq_len(nrow(true_scores)),
+        z = t(true_scores), axes = FALSE, xlab = "True factor",
+        ylab = "Fitted submanifold", main = main,
+        col = hcl.colors(100, "YlOrRd"))
+  axis(1, at = seq_len(ncol(true_scores)),
+       labels = paste0("true ", seq_len(ncol(true_scores))))
+  axis(2, at = seq_len(nrow(true_scores)),
+       labels = paste0("S", seq_len(nrow(true_scores))), las = 1)
+  for (s in seq_len(nrow(true_scores))) {
+    for (k in seq_len(ncol(true_scores))) {
+      text(k, s, sprintf("%.2f", true_scores[s, k]), cex = 0.65)
+    }
+  }
+  box()
+}
+
+plot_motif_entropy = function(fit, main) {
+  ent = motif_gamma_entropy(fit$gamma_bar)
+  image(x = seq_len(ncol(ent)), y = seq_len(nrow(ent)),
+        z = t(ent), axes = FALSE, xlab = "Slot d",
+        ylab = "Fitted submanifold", main = main,
+        col = hcl.colors(100, "Blues"))
+  axis(1, at = seq_len(ncol(ent)), labels = paste0("d", seq_len(ncol(ent))))
+  axis(2, at = seq_len(nrow(ent)), labels = paste0("S", seq_len(nrow(ent))),
+       las = 1)
+  for (s in seq_len(nrow(ent))) {
+    for (d in seq_len(ncol(ent))) {
+      text(d, s, sprintf("%.2f", ent[s, d]), cex = 0.65)
+    }
+  }
+  box()
+}
+```
+
+## Block Scenario
+
+```{r block-simulate}
+block_supports = list(
+  c(1),
+  c(2),
+  c(3),
+  c(4),
+  c(5),
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(2, 3, 5)
+)
+
+block = simulate_support_scenario(
+  N = 320,
+  M = 350,
+  K = 5,
+  group_supports = block_supports,
+  shape_vec = c(rep(10, 5), rep(20, 3)),
+  seed = 42
+)
+
+data.frame(group = seq_along(block_supports),
+           true_active_factors = block$true_patterns)
+```
+
+```{r block-fit}
+block_pair = fit_soft_pair(
+  dat = block,
+  K = 5,
+  S = length(block_supports),
+  D = 3,
+  init_seed = 1,
+  mf_max_iters = 35,
+  mf_nmf_iters = 60,
+  mos_max_iters = 18,
+  n_inner = 3,
+  block_size = 100
+)
+
+summarize_pair(block_pair, block)
+```
+
+```{r block-motif-table}
+rbind(
+  motif_score_table(block_pair$fixed_F, block$F0, "soft fixed F"),
+  motif_score_table(block_pair$alternating, block$F0, "soft alternating F")
+)
+```
+
+```{r block-plots}
+plot_group_responsibilities(
+  block_pair$fixed_F$omega,
+  block$grp,
+  "Block scenario: soft fixed-F responsibilities"
+)
+
+plot_group_responsibilities(
+  block_pair$alternating$omega,
+  block$grp,
+  "Block scenario: soft alternating responsibilities"
+)
+
+plot_cosine_heatmap(
+  match_factor_rows(block_pair$alternating$F, block$F0)$similarity,
+  "Block scenario: alternating fitted and true factor cosine"
+)
+
+plot_motif_scores(
+  block_pair$alternating,
+  block$F0,
+  "Block scenario: posterior motif mass in true factor space"
+)
+
+plot_motif_entropy(
+  block_pair$alternating,
+  "Block scenario: normalized entropy of gamma_bar[s,d,]"
+)
+```
+
+## Tree Scenario
+
+```{r tree-simulate}
+tree_supports = list(
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(1, 5, 6),
+  c(1, 5, 7),
+  c(1, 2),
+  c(1, 5)
+)
+
+tree = simulate_support_scenario(
+  N = 360,
+  M = 420,
+  K = 7,
+  group_supports = tree_supports,
+  shape_vec = rep(18, length(tree_supports)),
+  seed = 47
+)
+
+data.frame(group = seq_along(tree_supports),
+           true_active_factors = tree$true_patterns)
+```
+
+```{r tree-fit}
+tree_pair = fit_soft_pair(
+  dat = tree,
+  K = 7,
+  S = length(tree_supports),
+  D = 3,
+  init_seed = 2,
+  mf_max_iters = 40,
+  mf_nmf_iters = 70,
+  mos_max_iters = 18,
+  n_inner = 3,
+  block_size = 120
+)
+
+summarize_pair(tree_pair, tree)
+```
+
+```{r tree-motif-table}
+rbind(
+  motif_score_table(tree_pair$fixed_F, tree$F0, "soft fixed F"),
+  motif_score_table(tree_pair$alternating, tree$F0, "soft alternating F")
+)
+```
+
+```{r tree-plots}
+plot_group_responsibilities(
+  tree_pair$fixed_F$omega,
+  tree$grp,
+  "Tree scenario: soft fixed-F responsibilities"
+)
+
+plot_group_responsibilities(
+  tree_pair$alternating$omega,
+  tree$grp,
+  "Tree scenario: soft alternating responsibilities"
+)
+
+plot_cosine_heatmap(
+  match_factor_rows(tree_pair$alternating$F, tree$F0)$similarity,
+  "Tree scenario: alternating fitted and true factor cosine"
+)
+
+plot_motif_scores(
+  tree_pair$alternating,
+  tree$F0,
+  "Tree scenario: posterior motif mass in true factor space"
+)
+
+plot_motif_entropy(
+  tree_pair$alternating,
+  "Tree scenario: normalized entropy of gamma_bar[s,d,]"
+)
+```
+
+## Takeaway
+
+The main object to inspect is `gamma_bar`. Concentrated rows indicate that a
+submanifold slot has selected a factor confidently. Diffuse rows indicate
+posterior uncertainty over competing fitted factors. This is different from
+`omega`, which measures uncertainty over the observation's submanifold label.
+
+The first comparison keeps `F` fixed after MF-Poisson-SuSiE initialization and
+only learns the soft motifs. The second comparison alternates the soft motif
+posterior with a responsibility-weighted update of `F`.

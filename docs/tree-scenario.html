@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+
+
+<title>MF Poisson SuSiE Tree Scenario</title>
+
+<script src="site_libs/header-attrs-2.30/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.13.2/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<link href="site_libs/font-awesome-6.5.2/css/all.min.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet" />
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/main/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">mos-nmf-experiments</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="poisson-susie.html">Poisson SuSiE</a>
+</li>
+<li>
+  <a href="joint-learn-susie-poi-F.html">Joint Learn F</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://github.com/dodat-stats/mos-nmf-experiments">
+    <span class="fab fa-github"></span>
+     
+    Source code
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">MF Poisson SuSiE Tree Scenario</h1>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
+workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span
+class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> </a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2026-07-26
+</p>
+<p>
+<strong>Checks:</strong> <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 6
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> 1
+</p>
+<p>
+<strong>Knit directory:</strong> <code>mos-nmf-experiments/</code> <span
+class="glyphicon glyphicon-question-sign" aria-hidden="true"
+title="This is the local directory in which the code in this file was executed.">
+</span>
+</p>
+<p>
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a>
+analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version
+1.7.2). The <em>Checks</em> tab describes the reproducibility checks
+that were applied when the results were created. The <em>Past
+versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguncommittedchanges">
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> <strong>R Markdown file:</strong> uncommitted
+changes </a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguncommittedchanges"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>The R Markdown is untracked by Git. To know which version of the R
+Markdown file created these results, you’ll want to first commit it to
+the Git repo. If you’re still working on the analysis, you can ignore
+this warning. When you’re finished, you can run
+<code>wflow_publish</code> to commit the R Markdown file and build the
+HTML.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the
+global environment can affect the analysis in your R Markdown file in
+unknown ways. For reproduciblity it’s best to always run the code in an
+empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20260624code">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Seed:</strong>
+<code>set.seed(20260624)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20260624code"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20260624)</code> was run prior to running
+the code in the R Markdown file. Setting a seed ensures that any results
+that rely on randomness, e.g. subsampling or permutations, are
+reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Session information:</strong>
+recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package
+versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be
+confident that you successfully produced the results during this
+run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr
+project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstreef889e0dd4934d9caabb3f72e952c368655d48c21targetblankf889e0da">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Repository version:</strong>
+<a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/f889e0dd4934d9caabb3f72e952c368655d48c21" target="_blank">f889e0d</a>
+</a>
+</p>
+</div>
+<div
+id="strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstreef889e0dd4934d9caabb3f72e952c368655d48c21targetblankf889e0da"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development
+and connecting the code version to the results is critical for
+reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version
+<a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/f889e0dd4934d9caabb3f72e952c368655d48c21" target="_blank">f889e0d</a>.
+See the <em>Past versions</em> tab to see a history of the changes made
+to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for
+the analysis have been committed to Git prior to generating the results
+(you can use <code>wflow_publish</code> or
+<code>wflow_git_commit</code>). workflowr only checks the R Markdown
+file, but you know if there are other scripts or data files that it
+depends on. Below is the status of the Git repository when the results
+were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .DS_Store
+    Ignored:    .RData
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+
+Untracked files:
+    Untracked:  analysis/overspecify-D-mf-poi-susie.Rmd
+    Untracked:  analysis/overspecify-K-mf-poi-susie.Rmd
+    Untracked:  analysis/tree-scenario.Rmd
+    Untracked:  tex/model-ideas.aux
+    Untracked:  tex/model-ideas.bbl
+    Untracked:  tex/model-ideas.blg
+    Untracked:  tex/model-ideas.brf
+    Untracked:  tex/model-ideas.log
+    Untracked:  tex/model-ideas.out
+    Untracked:  tex/model-ideas.pdf
+    Untracked:  tex/model-ideas.synctex.gz
+    Untracked:  tex/model-ideas.tex
+    Untracked:  tex/sparsity.bib
+
+Unstaged changes:
+    Modified:   analysis/index.Rmd
+    Modified:   analysis/joint-learn-susie-poi-F.Rmd
+    Modified:   code/joint-learn-susie-poi-F.R
+    Modified:   tex/mf-poi-susie.aux
+    Modified:   tex/mf-poi-susie.log
+    Modified:   tex/mf-poi-susie.pdf
+    Deleted:    tex/mf-poi-susie.synctex.gz
+    Modified:   tex/mf-poi-susie.tex
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not
+included in this status report because it is ok for generated content to
+have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+<p>
+There are no past versions. Publish this analysis with
+<code>wflow_publish()</code> to start tracking its development.
+</p>
+<hr>
+</div>
+</div>
+</div>
+<p>This page creates a harder simulation for MF-Poisson-SuSiE. The true
+factor matrix has <code>K_true = 7</code>, and every observation group
+uses at least two factors. There are no single-factor anchor groups. The
+support patterns form a simple tree: all groups share factor 1, then
+split into branch factors 2 and 5, and some groups add one leaf
+factor.</p>
+<p>We fit the model with the correct number of factors,
+<code>K_fit = 7</code>, but with an overspecified number of effects,
+<code>D_fit = 5</code>.</p>
+<pre class="r"><code>source(&quot;code/joint-learn-susie-poi-F.R&quot;)</code></pre>
+<div id="simulate-data" class="section level2">
+<h2>Simulate Data</h2>
+<pre class="r"><code>set.seed(47)
+
+N = 1800
+M = 2000
+K_true = 7
+K_fit = 7
+D_true = 3
+D_fit = 5
+
+group_supports = list(
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(1, 5, 6),
+  c(1, 5, 7),
+  c(1, 2),
+  c(1, 5)
+)
+n_groups = length(group_supports)
+n_per_group = N / n_groups
+grp = rep(seq_len(n_groups), each = n_per_group)
+
+F0 = matrix(rgamma(M * K_true, shape = 0.1, rate = 0.01),
+            nrow = K_true, ncol = M)
+F0 = F0 / rowSums(F0)
+
+L = matrix(0, nrow = N, ncol = K_true)
+for (g in seq_len(n_groups)) {
+  idx = which(grp == g)
+  support = group_supports[[g]]
+  L[idx, support] = matrix(rgamma(length(idx) * length(support),
+                                  shape = 18, rate = 1),
+                           nrow = length(idx), ncol = length(support))
+}
+
+rate = L %*% F0
+Y = matrix(rpois(N * M, rate), nrow = N, ncol = M)
+
+data.frame(
+  N = N,
+  M = M,
+  K_true = K_true,
+  K_fit = K_fit,
+  D_true = D_true,
+  D_fit = D_fit,
+  total_count = sum(Y),
+  nonzero_entries = sum(Y &gt; 0)
+)</code></pre>
+<pre><code>     N    M K_true K_fit D_true D_fit total_count nonzero_entries
+1 1800 2000      7     7      3     5       87274           82465</code></pre>
+<pre class="r"><code>true_patterns = vapply(group_supports, function(support) {
+  paste(support, collapse = &quot;,&quot;)
+}, character(1))
+
+data.frame(group = seq_len(n_groups), true_active_factors = true_patterns)</code></pre>
+<pre><code>  group true_active_factors
+1     1               1,2,3
+2     2               1,2,4
+3     3               1,5,6
+4     4               1,5,7
+5     5                 1,2
+6     6                 1,5</code></pre>
+<pre class="r"><code>matplot(t(F0[, 1:150]), type = &quot;l&quot;, lty = 1,
+        xlab = &quot;m&quot;, ylab = &quot;F0[k, m]&quot;,
+        main = &quot;True factor rows&quot;)
+legend(&quot;topright&quot;, legend = paste(&quot;factor&quot;, seq_len(K_true)),
+       col = seq_len(K_true), lty = 1, bty = &quot;n&quot;)</code></pre>
+<p><img src="figure/tree-scenario.Rmd/true-factor-shapes-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+</div>
+<div id="diagnostics" class="section level2">
+<h2>Diagnostics</h2>
+<pre class="r"><code>row_cosine = function(A, B) {
+  A_norm = sqrt(rowSums(A^2))
+  B_norm = sqrt(rowSums(B^2))
+  (A %*% t(B)) / (A_norm %o% B_norm)
+}
+
+all_permutations = function(x) {
+  if (length(x) == 1) return(matrix(x, nrow = 1))
+  do.call(rbind, lapply(seq_along(x), function(i) {
+    cbind(x[i], all_permutations(x[-i]))
+  }))
+}
+
+match_factor_rows = function(F_hat, F_true) {
+  K = nrow(F_true)
+  similarity = row_cosine(F_hat, F_true)
+  perms = all_permutations(seq_len(K))
+  scores = apply(perms, 1, function(p) {
+    sum(similarity[cbind(seq_len(K), p)])
+  })
+  learned_to_true = perms[which.max(scores), ]
+
+  data.frame(
+    learned_factor = seq_len(K),
+    matched_true_factor = learned_to_true,
+    cosine = similarity[cbind(seq_len(K), learned_to_true)]
+  )
+}
+
+loading_scores = function(fit) {
+  E_beta = fit$alpha / fit$lambda
+  apply(fit$gamma_bar * E_beta, c(1, 3), sum)
+}
+
+posterior_inclusion_scores = function(fit) {
+  1 - apply(1 - fit$gamma_bar, c(1, 3), prod)
+}
+
+effect_sizes = function(fit) {
+  E_beta = fit$alpha / fit$lambda
+  rowSums(fit$gamma_bar * E_beta, dims = 2)
+}
+
+effect_gamma_entropy = function(fit) {
+  entropy = -fit$gamma_bar * log(fit$gamma_bar)
+  entropy[is.nan(entropy)] = 0
+  rowSums(entropy, dims = 2) / log(dim(fit$gamma_bar)[3])
+}
+
+effect_max_gamma = function(fit) {
+  apply(fit$gamma_bar, c(1, 2), max)
+}
+
+effect_top_factor = function(fit) {
+  apply(fit$gamma_bar, c(1, 2), which.max)
+}
+
+rank_by_effect_size = function(effect_mat, size_mat) {
+  out = matrix(0, nrow = nrow(effect_mat), ncol = ncol(effect_mat))
+  for (i in seq_len(nrow(effect_mat))) {
+    ord = order(size_mat[i, ], decreasing = TRUE)
+    out[i, ] = effect_mat[i, ord]
+  }
+  out
+}
+
+rank_gamma_bar_by_size = function(fit, size_mat) {
+  N = dim(fit$gamma_bar)[1]
+  D = dim(fit$gamma_bar)[2]
+  K = dim(fit$gamma_bar)[3]
+  out = array(0, dim = c(N, D, K))
+  for (i in seq_len(N)) {
+    ord = order(size_mat[i, ], decreasing = TRUE)
+    out[i, , ] = fit$gamma_bar[i, ord, ]
+  }
+  out
+}
+
+map_scores_to_true = function(scores, learned_to_true) {
+  K = length(learned_to_true)
+  out = matrix(0, nrow = nrow(scores), ncol = K)
+  for (k in seq_len(K)) {
+    out[, learned_to_true[k]] = out[, learned_to_true[k]] + scores[, k]
+  }
+  out
+}
+
+support_labels_from_scores = function(scores, support_sizes) {
+  vapply(seq_len(nrow(scores)), function(i) {
+    active = order(scores[i, ], decreasing = TRUE)[seq_len(support_sizes[i])]
+    paste(sort(active), collapse = &quot;,&quot;)
+  }, character(1))
+}
+
+normalized_entropy = function(scores) {
+  prob = scores / rowSums(scores)
+  entropy = -prob * log(prob)
+  entropy[is.nan(entropy)] = 0
+  mean(rowSums(entropy)) / log(ncol(scores))
+}
+
+extra_effect_mass_fraction = function(size_mat, true_support_size) {
+  vapply(seq_len(nrow(size_mat)), function(i) {
+    sorted_sizes = sort(size_mat[i, ], decreasing = TRUE)
+    extra_idx = seq.int(true_support_size[i] + 1, length(sorted_sizes))
+    sum(sorted_sizes[extra_idx]) / sum(sorted_sizes)
+  }, numeric(1))
+}
+
+plot_cosine_heatmap = function(cosine_mat, main) {
+  image(x = seq_len(ncol(cosine_mat)), y = seq_len(nrow(cosine_mat)),
+        z = t(cosine_mat), axes = FALSE, xlab = &quot;True factor&quot;,
+        ylab = &quot;Fitted factor&quot;, main = main, col = hcl.colors(100, &quot;YlOrRd&quot;))
+  axis(1, at = seq_len(ncol(cosine_mat)),
+       labels = paste0(&quot;true &quot;, seq_len(ncol(cosine_mat))))
+  axis(2, at = seq_len(nrow(cosine_mat)),
+       labels = paste0(&quot;fit &quot;, seq_len(nrow(cosine_mat))), las = 1)
+  for (k_fit in seq_len(nrow(cosine_mat))) {
+    for (k_true in seq_len(ncol(cosine_mat))) {
+      text(k_true, k_fit, sprintf(&quot;%.2f&quot;, cosine_mat[k_fit, k_true]),
+           cex = 0.65)
+    }
+  }
+  box()
+}
+
+plot_recovered_support = function(scores_true_space, main) {
+  recovered = matrix(0, nrow = K_true, ncol = N)
+  for (i in seq_len(N)) {
+    active = order(scores_true_space[i, ], decreasing = TRUE)[
+      seq_len(true_support_size[i])
+    ]
+    recovered[active, i] = 1
+  }
+
+  image(x = seq_len(N), y = seq_len(K_true), z = t(recovered),
+        axes = FALSE, xlab = &quot;Sample&quot;, ylab = &quot;Recovered true factor&quot;,
+        main = main, col = c(&quot;white&quot;, &quot;firebrick&quot;))
+  axis(1, at = seq(n_per_group / 2, N, by = n_per_group),
+       labels = paste(&quot;G&quot;, seq_len(n_groups)))
+  axis(2, at = seq_len(K_true), labels = seq_len(K_true), las = 1)
+  abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
+         col = &quot;gray80&quot;, lty = 3)
+  box()
+}
+
+plot_group_factor_heatmap = function(group_factor_mat, main, ylab) {
+  image(x = seq_len(ncol(group_factor_mat)), y = seq_len(nrow(group_factor_mat)),
+        z = t(group_factor_mat), axes = FALSE, xlab = &quot;True factor&quot;,
+        ylab = ylab, main = main, col = hcl.colors(100, &quot;YlOrRd&quot;))
+  axis(1, at = seq_len(ncol(group_factor_mat)),
+       labels = seq_len(ncol(group_factor_mat)))
+  axis(2, at = seq_len(nrow(group_factor_mat)),
+       labels = paste(&quot;G&quot;, seq_len(nrow(group_factor_mat))), las = 1)
+  for (g in seq_len(nrow(group_factor_mat))) {
+    for (k in seq_len(ncol(group_factor_mat))) {
+      text(k, g, sprintf(&quot;%.2f&quot;, group_factor_mat[g, k]), cex = 0.65)
+    }
+  }
+  box()
+}
+
+plot_rank_heatmap = function(rank_mat, main, ylab, col) {
+  image(x = seq_len(N), y = seq_len(ncol(rank_mat)), z = rank_mat,
+        axes = FALSE, xlab = &quot;Sample&quot;, ylab = ylab,
+        main = main, col = col)
+  axis(1, at = seq(n_per_group / 2, N, by = n_per_group),
+       labels = paste(&quot;G&quot;, seq_len(n_groups)))
+  axis(2, at = seq_len(ncol(rank_mat)), labels = seq_len(ncol(rank_mat)),
+       las = 1)
+  abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
+         col = &quot;gray80&quot;, lty = 3)
+  box()
+}
+
+plot_factor_id_heatmap = function(rank_top_factor, main) {
+  image(x = seq_len(N), y = seq_len(ncol(rank_top_factor)),
+        z = rank_top_factor, axes = FALSE, xlab = &quot;Sample&quot;,
+        ylab = &quot;Effect rank&quot;, main = main, col = seq_len(K_fit))
+  axis(1, at = seq(n_per_group / 2, N, by = n_per_group),
+       labels = paste(&quot;G&quot;, seq_len(n_groups)))
+  axis(2, at = seq_len(ncol(rank_top_factor)),
+       labels = seq_len(ncol(rank_top_factor)), las = 1)
+  abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
+         col = &quot;gray80&quot;, lty = 3)
+  legend(&quot;topright&quot;, legend = paste(&quot;factor&quot;, seq_len(K_fit)),
+         fill = seq_len(K_fit), bty = &quot;n&quot;, cex = 0.8)
+  box()
+}
+
+plot_single_gamma_heatmap = function(gamma_mat, main) {
+  D = nrow(gamma_mat)
+  K = ncol(gamma_mat)
+  image(x = seq_len(K), y = seq_len(D), z = t(gamma_mat),
+        axes = FALSE, xlab = &quot;Fitted factor&quot;, ylab = &quot;Effect rank&quot;,
+        main = main, col = hcl.colors(100, &quot;YlOrRd&quot;))
+  axis(1, at = seq_len(K), labels = seq_len(K))
+  axis(2, at = seq_len(D), labels = seq_len(D), las = 1)
+  box()
+}
+
+plot_representative_gamma = function(rank_gamma_bar, representative_idx) {
+  op = par(mfrow = c(2, 3), mar = c(4, 4, 3, 1))
+  on.exit(par(op))
+  for (j in seq_along(representative_idx)) {
+    i = representative_idx[j]
+    plot_single_gamma_heatmap(
+      rank_gamma_bar[i, , ],
+      paste(&quot;Group&quot;, grp[i], &quot;sample&quot;, i)
+    )
+  }
+}
+
+true_support_size = rowSums(L &gt; 0)
+true_support_label = apply(L &gt; 0, 1, function(x) {
+  paste(which(x), collapse = &quot;,&quot;)
+})</code></pre>
+</div>
+<div id="fit-tree-scenario" class="section level2">
+<h2>Fit Tree Scenario</h2>
+<pre class="r"><code>fit = mf_poi_susie(
+  Y = Y,
+  K = K_fit,
+  D = D_fit,
+  max_iters = 100,
+  update_prior = TRUE,
+  break_symmetry = FALSE,
+  init_seed = 1,
+  init_F = &quot;poisson_nmf&quot;,
+  nmf_iters = 200,
+  init_gamma_from_nmf = TRUE,
+  gamma_step_init = 0.1,
+  gamma_step_ramp = 50,
+  F_step_init = 0.05,
+  F_step_ramp = 75,
+  elbo_every = 5,
+  tol = 5e-4,
+  min_iters = 20,
+  patience = 2
+)</code></pre>
+<pre class="r"><code>idx = fit$elbo_iter
+plot(idx, fit$elbo[idx], type = &quot;l&quot;, xlab = &quot;Iteration&quot;, ylab = &quot;ELBO&quot;,
+     main = &quot;Variational objective&quot;)
+points(idx, fit$elbo[idx], pch = 19, cex = 0.5)</code></pre>
+<p><img src="figure/tree-scenario.Rmd/elbo-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>data.frame(
+  converged = fit$converged,
+  n_iter = fit$n_iter,
+  final_elbo = tail(fit$elbo[fit$elbo_iter], 1)
+)</code></pre>
+<pre><code>  converged n_iter final_elbo
+1      TRUE     45  -318073.2</code></pre>
+</div>
+<div id="factor-recovery" class="section level2">
+<h2>Factor Recovery</h2>
+<pre class="r"><code>factor_match = match_factor_rows(fit$F, F0)
+learned_to_true = factor_match$matched_true_factor
+
+factor_match</code></pre>
+<pre><code>  learned_factor matched_true_factor    cosine
+1              1                   2 0.8147717
+2              2                   7 0.7775340
+3              3                   5 0.8877671
+4              4                   4 0.7034718
+5              5                   1 0.8945475
+6              6                   6 0.8285534
+7              7                   3 0.1049664</code></pre>
+<pre class="r"><code>data.frame(
+  mean_matched_cosine = mean(factor_match$cosine),
+  min_matched_cosine = min(factor_match$cosine)
+)</code></pre>
+<pre><code>  mean_matched_cosine min_matched_cosine
+1           0.7159446          0.1049664</code></pre>
+<pre class="r"><code>cosine_fit_true = row_cosine(fit$F, F0)
+plot_cosine_heatmap(
+  cosine_fit_true,
+  &quot;Cosine similarity between fitted and true factors&quot;
+)</code></pre>
+<p><img src="figure/tree-scenario.Rmd/factor-cosine-heatmap-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>matplot(t(fit$F[, 1:150]), type = &quot;l&quot;, lty = 1,
+        xlab = &quot;m&quot;, ylab = &quot;F[k, m]&quot;,
+        main = &quot;Learned factor rows&quot;)
+legend(&quot;topright&quot;, legend = paste(&quot;fit&quot;, seq_len(K_fit)),
+       col = seq_len(K_fit), lty = 1, bty = &quot;n&quot;)</code></pre>
+<p><img src="figure/tree-scenario.Rmd/learned-factor-shapes-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+</div>
+<div id="support-recovery" class="section level2">
+<h2>Support Recovery</h2>
+<pre class="r"><code>fit_loading_scores = loading_scores(fit)
+fit_pip_scores = posterior_inclusion_scores(fit)
+scores_true_space = map_scores_to_true(fit_loading_scores, learned_to_true)
+pip_true_space = map_scores_to_true(fit_pip_scores, learned_to_true)
+
+sizes = effect_sizes(fit)
+extra_mass = extra_effect_mass_fraction(sizes, true_support_size)
+
+support_recovery = data.frame(
+  exact_support_accuracy = mean(
+    support_labels_from_scores(scores_true_space, true_support_size) ==
+      true_support_label
+  ),
+  mean_normalized_loading_entropy = normalized_entropy(scores_true_space),
+  mean_extra_effect_mass_fraction = mean(extra_mass),
+  median_extra_effect_mass_fraction = median(extra_mass),
+  q90_extra_effect_mass_fraction = as.numeric(quantile(extra_mass, 0.9))
+)
+
+support_recovery</code></pre>
+<pre><code>  exact_support_accuracy mean_normalized_loading_entropy
+1                    0.4                       0.3554378
+  mean_extra_effect_mass_fraction median_extra_effect_mass_fraction
+1                      0.03542076                      0.0006476908
+  q90_extra_effect_mass_fraction
+1                      0.1395606</code></pre>
+<pre class="r"><code>plot_recovered_support(
+  scores_true_space,
+  &quot;Recovered supports in the tree scenario&quot;
+)</code></pre>
+<p><img src="figure/tree-scenario.Rmd/recovered-support-plot-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>recovered_label = support_labels_from_scores(scores_true_space,
+                                             true_support_size)
+recovered_by_group = do.call(rbind, lapply(seq_len(n_groups), function(g) {
+  tab = table(recovered_label[grp == g])
+  data.frame(group = g, recovered_pattern = names(tab), n = as.integer(tab),
+             row.names = NULL)
+}))
+
+recovered_by_group</code></pre>
+<pre><code>   group recovered_pattern   n
+1      1             1,2,3 125
+2      1             1,2,4  15
+3      1             1,2,5  12
+4      1             1,2,6  13
+5      1             1,2,7  13
+6      1             2,3,4  34
+7      1             2,3,5  20
+8      1             2,3,6  30
+9      1             2,3,7  24
+10     1             2,4,5   3
+11     1             2,4,7   3
+12     1             2,5,6   3
+13     1             2,5,7   3
+14     1             2,6,7   2
+15     2             1,2,4  44
+16     2             1,3,4 115
+17     2             1,4,5  21
+18     2             1,4,6  14
+19     2             1,4,7  15
+20     2             2,3,4  22
+21     2             2,4,5   7
+22     2             2,4,6   6
+23     2             2,4,7   4
+24     2             3,4,5  17
+25     2             3,4,6  13
+26     2             3,4,7  12
+27     2             4,5,6   1
+28     2             4,5,7   7
+29     2             4,6,7   2
+30     3             1,2,6   4
+31     3             1,3,6  27
+32     3             1,4,6  12
+33     3             1,5,6 125
+34     3             1,6,7  13
+35     3             2,5,6   4
+36     3             3,4,6   1
+37     3             3,5,6  77
+38     3             3,6,7   4
+39     3             4,5,6   3
+40     3             5,6,7  30
+41     4             1,2,7  10
+42     4             1,3,7  73
+43     4             1,4,7  11
+44     4             1,5,7  94
+45     4             1,6,7  12
+46     4             2,3,7   4
+47     4             2,5,7   2
+48     4             2,6,7   1
+49     4             3,4,7  11
+50     4             3,5,7  55
+51     4             3,6,7   8
+52     4             4,5,7   6
+53     4             5,6,7  13
+54     5               1,2 124
+55     5               1,3  12
+56     5               1,4  17
+57     5               2,3 116
+58     5               2,4  15
+59     5               2,5   4
+60     5               2,6   4
+61     5               2,7   1
+62     5               3,4   7
+63     6               1,3   5
+64     6               1,5 208
+65     6               1,7   1
+66     6               2,5   2
+67     6               3,5  74
+68     6               3,6   1
+69     6               3,7   1
+70     6               4,5   2
+71     6               5,6   4
+72     6               5,7   2</code></pre>
+</div>
+<div id="group-level-loading-structure" class="section level2">
+<h2>Group-Level Loading Structure</h2>
+<p>These heatmaps ask whether the fitted model recovers the tree
+structure after matching learned factors to true factors. The first uses
+expected loading mass; the second uses PIPs derived from
+<code>gamma_bar</code>.</p>
+<pre class="r"><code>group_loading_mean = do.call(rbind, lapply(seq_len(n_groups), function(g) {
+  colMeans(scores_true_space[grp == g, , drop = FALSE])
+}))
+group_loading_share = group_loading_mean / rowSums(group_loading_mean)
+
+plot_group_factor_heatmap(
+  group_loading_share,
+  &quot;Group mean posterior loading share&quot;,
+  &quot;Group&quot;
+)</code></pre>
+<p><img src="figure/tree-scenario.Rmd/group-loading-heatmap-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>group_pip_mean = do.call(rbind, lapply(seq_len(n_groups), function(g) {
+  colMeans(pip_true_space[grp == g, , drop = FALSE])
+}))
+group_pip_share = group_pip_mean / rowSums(group_pip_mean)
+
+plot_group_factor_heatmap(
+  group_pip_share,
+  &quot;Group mean posterior PIP share&quot;,
+  &quot;Group&quot;
+)</code></pre>
+<p><img src="figure/tree-scenario.Rmd/group-pip-heatmap-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>branch_scores = data.frame(
+  group = seq_len(n_groups),
+  true_pattern = true_patterns,
+  root_1 = group_loading_share[, 1],
+  branch_2 = group_loading_share[, 2],
+  branch_5 = group_loading_share[, 5],
+  leaf_3 = group_loading_share[, 3],
+  leaf_4 = group_loading_share[, 4],
+  leaf_6 = group_loading_share[, 6],
+  leaf_7 = group_loading_share[, 7]
+)
+
+branch_scores</code></pre>
+<pre><code>  group true_pattern     root_1    branch_2    branch_5     leaf_3      leaf_4
+1     1        1,2,3 0.05662254 0.762368946 0.005184149 0.14652061 0.012021046
+2     2        1,2,4 0.07979020 0.029755426 0.004007666 0.06657730 0.808677703
+3     3        1,5,6 0.08976662 0.002432571 0.234094247 0.05764578 0.004156545
+4     4        1,5,7 0.09432255 0.003472957 0.129729398 0.07019925 0.004882432
+5     5          1,2 0.22190175 0.515753393 0.003205757 0.18231519 0.069104027
+6     6          1,5 0.23435440 0.002160813 0.640840145 0.09454761 0.005729320
+       leaf_6      leaf_7
+1 0.009632516 0.007650191
+2 0.006205954 0.004985747
+3 0.600009312 0.011894927
+4 0.007352110 0.690041301
+5 0.004568563 0.003151321
+6 0.012478600 0.009889113</code></pre>
+<p>The hardest separations are expected to be between sibling groups:
+groups 1 and 2 share factors 1 and 2 and differ only by factor 3 versus
+4; groups 3 and 4 share factors 1 and 5 and differ only by factor 6
+versus 7. Groups 5 and 6 test whether the model can recover branch-level
+supports without any leaf factor.</p>
+</div>
+<div id="overfitted-effect-behavior" class="section level2">
+<h2>Overfitted Effect Behavior</h2>
+<pre class="r"><code>gamma_entropy = effect_gamma_entropy(fit)
+max_gamma = effect_max_gamma(fit)
+top_factor = effect_top_factor(fit)
+rank_gamma_bar = rank_gamma_bar_by_size(fit, sizes)
+
+rank_size = rank_by_effect_size(sizes, sizes)
+rank_entropy = rank_by_effect_size(gamma_entropy, sizes)
+rank_max_gamma = rank_by_effect_size(max_gamma, sizes)
+rank_top_factor = rank_by_effect_size(top_factor, sizes)
+
+rank_summary = do.call(rbind, lapply(seq_len(D_fit), function(r) {
+  data.frame(
+    effect_rank = r,
+    mean_expected_size = mean(rank_size[, r]),
+    median_expected_size = median(rank_size[, r]),
+    mean_gamma_entropy = mean(rank_entropy[, r]),
+    median_gamma_entropy = median(rank_entropy[, r]),
+    mean_max_gamma = mean(rank_max_gamma[, r]),
+    median_max_gamma = median(rank_max_gamma[, r]),
+    selected_as_extra_fraction = mean(r &gt; true_support_size)
+  )
+}))
+
+rank_summary</code></pre>
+<pre><code>  effect_rank mean_expected_size median_expected_size mean_gamma_entropy
+1           1         34.0770131         32.457329769        0.001143121
+2           2         10.8007249         10.412742905        0.087403369
+3           3          3.1131451          1.827890703        0.485126310
+4           4          0.5071712          0.011998788        0.871013993
+5           5          0.0400948          0.008232219        0.988806913
+  median_gamma_entropy mean_max_gamma median_max_gamma
+1         4.224351e-20      0.9993404        1.0000000
+2         9.828171e-07      0.9278798        0.9999999
+3         2.852976e-01      0.5879038        0.7929257
+4         1.000000e+00      0.2547956        0.1428901
+5         1.000000e+00      0.1524459        0.1428694
+  selected_as_extra_fraction
+1                  0.0000000
+2                  0.0000000
+3                  0.3333333
+4                  1.0000000
+5                  1.0000000</code></pre>
+<pre class="r"><code>boxplot(
+  split(as.vector(rank_size), col(rank_size)),
+  xlab = &quot;Effect rank within observation&quot;,
+  ylab = &quot;Posterior expected effect size&quot;,
+  main = &quot;Effect sizes after fitting D = 5&quot;
+)
+abline(v = D_true + 0.5, col = &quot;gray50&quot;, lty = 2)</code></pre>
+<p><img src="figure/tree-scenario.Rmd/effect-rank-size-boxplot-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>boxplot(
+  split(as.vector(rank_entropy), col(rank_entropy)),
+  xlab = &quot;Effect rank within observation&quot;,
+  ylab = &quot;Normalized entropy of gamma_bar&quot;,
+  main = &quot;Posterior factor-assignment uncertainty by effect rank&quot;
+)
+abline(v = D_true + 0.5, col = &quot;gray50&quot;, lty = 2)</code></pre>
+<p><img src="figure/tree-scenario.Rmd/effect-rank-entropy-boxplot-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot(
+  as.vector(rank_size),
+  as.vector(rank_entropy),
+  pch = 20,
+  col = rgb(0.6, 0, 0, 0.25),
+  xlab = &quot;Posterior expected effect size&quot;,
+  ylab = &quot;Normalized entropy of gamma_bar&quot;,
+  main = &quot;Effect size versus gamma_bar uncertainty&quot;
+)</code></pre>
+<p><img src="figure/tree-scenario.Rmd/effect-rank-size-entropy-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_rank_heatmap(
+  rank_size,
+  &quot;Posterior expected effect size by rank&quot;,
+  &quot;Effect rank&quot;,
+  hcl.colors(100, &quot;YlOrRd&quot;)
+)</code></pre>
+<p><img src="figure/tree-scenario.Rmd/effect-rank-size-heatmap-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_rank_heatmap(
+  rank_entropy,
+  &quot;Normalized gamma_bar entropy by effect rank&quot;,
+  &quot;Effect rank&quot;,
+  hcl.colors(100, &quot;YlGnBu&quot;)
+)</code></pre>
+<p><img src="figure/tree-scenario.Rmd/effect-rank-entropy-heatmap-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_factor_id_heatmap(
+  rank_top_factor,
+  &quot;Top posterior fitted factor by effect rank&quot;
+)</code></pre>
+<p><img src="figure/tree-scenario.Rmd/effect-rank-top-factor-heatmap-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+</div>
+<div id="representative-posterior-assignment-heatmaps"
+class="section level2">
+<h2>Representative Posterior Assignment Heatmaps</h2>
+<p>Rows are fitted effects sorted by posterior expected size. Columns
+are fitted factors. Since <code>D_fit = 5</code> but the true support
+size is two or three, the lower effect ranks should ideally be small and
+diffuse.</p>
+<pre class="r"><code>representative_idx = vapply(seq_len(n_groups), function(g) {
+  which(grp == g)[1]
+}, integer(1))
+
+plot_representative_gamma(rank_gamma_bar, representative_idx)</code></pre>
+<p><img src="figure/tree-scenario.Rmd/representative-gamma-heatmaps-1.png" alt="" width="960" style="display: block; margin: auto;" /></p>
+</div>
+<div id="interpretation" class="section level2">
+<h2>Interpretation</h2>
+<p>This setting removes the easiest anchors: no observation group is
+generated from a single factor. Recovery therefore depends on separating
+factors through shared and contrasting co-occurrence patterns. Factor 1
+is a root factor present in every group; factors 2 and 5 are branch
+factors; factors 3, 4, 6, and 7 are leaf factors that only appear in one
+group each.</p>
+<p>For fixed learned <code>F</code>, <code>gamma_bar</code> quantifies
+posterior uncertainty in the loading decomposition. In this tree
+scenario, diffuse <code>gamma_bar</code> in lower-ranked effects
+indicates that the extra fitted dimensions are not confidently assigned
+to a factor. Sizable lower-ranked effects with low entropy are more
+concerning: they mean the overspecified <code>D</code> is acting as
+additional confident components, which can blur the intended tree
+support patterns.</p>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
+Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 4.5.2 (2025-10-31)
+Platform: aarch64-apple-darwin20
+Running under: macOS Tahoe 26.5.1
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/New_York
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+loaded via a namespace (and not attached):
+ [1] vctrs_0.7.1       cli_3.6.6         knitr_1.51        rlang_1.2.0      
+ [5] xfun_0.56         stringi_1.8.7     otel_0.2.0        promises_1.5.0   
+ [9] jsonlite_2.0.0    workflowr_1.7.2   glue_1.8.0        rprojroot_2.1.1  
+[13] git2r_0.36.2      htmltools_0.5.9   httpuv_1.6.17     sass_0.4.10      
+[17] rmarkdown_2.30    jquerylib_0.1.4   evaluate_1.0.5    tibble_3.3.1     
+[21] fastmap_1.2.0     yaml_2.3.12       lifecycle_1.0.5   stringr_1.6.0    
+[25] compiler_4.5.2    fs_2.1.0          Rcpp_1.1.1        pkgconfig_2.0.3  
+[29] rstudioapi_0.18.0 later_1.4.8       digest_0.6.39     R6_2.6.1         
+[33] pillar_1.11.1     magrittr_2.0.4    bslib_0.10.0      tools_4.5.2      
+[37] cachem_1.1.0     </code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+https://docs.mathjax.org/en/latest/web/configuration.html. This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

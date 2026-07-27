@@ -35,6 +35,8 @@
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
 <link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<link href="site_libs/font-awesome-6.5.2/css/all.min.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet" />
 
 <link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/main/img/reproducible.png">
 <!-- Add a small amount of space between sections. -->
@@ -345,7 +347,13 @@ div.tocify {
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
-        
+        <li>
+  <a href="https://github.com/dodat-stats/mos-nmf-experiments">
+    <span class="fab fa-github"></span>
+     
+    Source code
+  </a>
+</li>
       </ul>
     </div><!--/.nav-collapse -->
   </div><!--/.container -->
@@ -363,7 +371,7 @@ div.tocify {
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
 <span class="glyphicon glyphicon-list" aria-hidden="true"></span>
-workflowr <span class="glyphicon glyphicon-ok text-success"
+workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger"
 aria-hidden="true"></span>
 </button>
 </p>
@@ -374,8 +382,8 @@ aria-hidden="true"></span>
 </li>
 <li>
 <a data-toggle="tab" href="#checks"> Checks <span
-class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
-</a>
+class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> </a>
 </li>
 <li>
 <a data-toggle="tab" href="#versions">Past versions</a>
@@ -384,13 +392,13 @@ class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
 <div class="tab-content">
 <div id="summary" class="tab-pane fade in active">
 <p>
-<strong>Last updated:</strong> 2026-06-24
+<strong>Last updated:</strong> 2026-07-26
 </p>
 <p>
 <strong>Checks:</strong> <span
-class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 6
 <span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> 0
+aria-hidden="true"></span> 1
 </p>
 <p>
 <strong>Knit directory:</strong> <code>mos-nmf-experiments/</code> <span
@@ -413,18 +421,21 @@ versions</em> tab lists the development history.
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate">
-<span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date
-</a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguncommittedchanges">
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> <strong>R Markdown file:</strong> uncommitted
+changes </a>
 </p>
 </div>
-<div id="strongRMarkdownfilestronguptodate"
+<div id="strongRMarkdownfilestronguncommittedchanges"
 class="panel-collapse collapse">
 <div class="panel-body">
-<p>Great! Since the R Markdown file has been committed to the Git
-repository, you know the exact version of the code that produced these
-results.</p>
+<p>The R Markdown file has unstaged changes. To know which version of
+the R Markdown file created these results, you’ll want to first commit
+it to the Git repo. If you’re still working on the analysis, you can
+ignore this warning. When you’re finished, you can run
+<code>wflow_publish</code> to commit the R Markdown file and build the
+HTML.</p>
 </div>
 </div>
 </div>
@@ -515,13 +526,15 @@ project makes it easier to run your code on other machines.</p>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrong11bd289">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstreef889e0dd4934d9caabb3f72e952c368655d48c21targetblankf889e0da">
 <span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>Repository version:</strong> 11bd289
+aria-hidden="true"></span> <strong>Repository version:</strong>
+<a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/f889e0dd4934d9caabb3f72e952c368655d48c21" target="_blank">f889e0d</a>
 </a>
 </p>
 </div>
-<div id="strongRepositoryversionstrong11bd289"
+<div
+id="strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstreef889e0dd4934d9caabb3f72e952c368655d48c21targetblankf889e0da"
 class="panel-collapse collapse">
 <div class="panel-body">
 <p>
@@ -530,7 +543,8 @@ and connecting the code version to the results is critical for
 reproducibility.
 </p>
 <p>
-The results in this page were generated with repository version 11bd289.
+The results in this page were generated with repository version
+<a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/f889e0dd4934d9caabb3f72e952c368655d48c21" target="_blank">f889e0d</a>.
 See the <em>Past versions</em> tab to see a history of the changes made
 to the R Markdown and HTML files.
 </p>
@@ -549,18 +563,28 @@ Ignored files:
     Ignored:    .RData
     Ignored:    .Rhistory
     Ignored:    .Rproj.user/
+    Ignored:    analysis/figure/
 
 Untracked files:
-    Untracked:  code/joint-learn-susie-poi-F.R
-    Untracked:  code/mf-poi-susie.R
-    Untracked:  code/mv-poi-susie.R
-    Untracked:  code/poisson-susie.R
-    Untracked:  code/utils.R
-    Untracked:  tex/
+    Untracked:  tex/model-ideas.aux
+    Untracked:  tex/model-ideas.bbl
+    Untracked:  tex/model-ideas.blg
+    Untracked:  tex/model-ideas.brf
+    Untracked:  tex/model-ideas.log
+    Untracked:  tex/model-ideas.out
+    Untracked:  tex/model-ideas.pdf
+    Untracked:  tex/model-ideas.synctex.gz
+    Untracked:  tex/model-ideas.tex
+    Untracked:  tex/sparsity.bib
 
 Unstaged changes:
-    Modified:   .Rprofile
-    Modified:   analysis/_site.yml
+    Modified:   analysis/joint-learn-susie-poi-F.Rmd
+    Modified:   code/joint-learn-susie-poi-F.R
+    Modified:   tex/mf-poi-susie.aux
+    Modified:   tex/mf-poi-susie.log
+    Modified:   tex/mf-poi-susie.pdf
+    Deleted:    tex/mf-poi-susie.synctex.gz
+    Modified:   tex/mf-poi-susie.tex
 
 </code></pre>
 <p>
@@ -608,10 +632,27 @@ Message
 <tbody>
 <tr>
 <td>
+html
+</td>
+<td>
+<a href="https://rawcdn.githack.com/dodat-stats/mos-nmf-experiments/d39c4cee4d76e3d4c8c4758ed33a1fbeca424f4e/docs/joint-learn-susie-poi-F.html" target="_blank">d39c4ce</a>
+</td>
+<td>
+dodat-stats
+</td>
+<td>
+2026-06-24
+</td>
+<td>
+Build site.
+</td>
+</tr>
+<tr>
+<td>
 Rmd
 </td>
 <td>
-11bd289
+<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/11bd28921b28ca496e5e3c9c6931379b76fa9910/analysis/joint-learn-susie-poi-F.Rmd" target="_blank">11bd289</a>
 </td>
 <td>
 dodat-stats
@@ -650,12 +691,11 @@ class="math inline">\(\gamma_{id} \in \{1,\ldots,K\}\)</span>, and its
 size is <span class="math inline">\(\beta_{id} &gt; 0\)</span>. The
 variational fit estimates posterior assignment probabilities
 <code>gamma_bar[i, d, k]</code>, Gamma variational parameters for the
-effect sizes, and, when <code>update_F = TRUE</code>, the shared factor
+effect sizes, and, in the unknown-<code>F</code> fit, the shared factor
 matrix <code>F</code>.</p>
 <p>The simulation below first checks recovery when the true factor
 matrix <code>F0</code> is given to the algorithm, then repeats the fit
-from a random initialized <code>F</code> while learning <code>F</code>
-jointly.</p>
+with <code>F</code> initialized by Poisson NMF and learned jointly.</p>
 </div>
 <div id="simulate-data" class="section level2">
 <h2>Simulate Data</h2>
@@ -719,32 +759,175 @@ data.frame(group = 1:8, true_active_factors = true_patterns)</code></pre>
 legend(&quot;topright&quot;, legend = paste(&quot;factor&quot;, 1:K), col = 1:K, lty = 1,
        bty = &quot;n&quot;)</code></pre>
 <p><img src="figure/joint-learn-susie-poi-F.Rmd/true-factor-shapes-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-true-factor-shapes-1">
+Past versions of true-factor-shapes-1.png
+</button>
+</p>
+<div id="fig-true-factor-shapes-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/d39c4cee4d76e3d4c8c4758ed33a1fbeca424f4e/docs/figure/joint-learn-susie-poi-F.Rmd/true-factor-shapes-1.png" target="_blank">d39c4ce</a>
+</td>
+<td>
+dodat-stats
+</td>
+<td>
+2026-06-24
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<pre class="r"><code>row_cosine = function(A, B) {
+  A_norm = sqrt(rowSums(A^2))
+  B_norm = sqrt(rowSums(B^2))
+  (A %*% t(B)) / (A_norm %o% B_norm)
+}
+
+all_permutations = function(x) {
+  if (length(x) == 1) return(matrix(x, nrow = 1))
+  do.call(rbind, lapply(seq_along(x), function(i) {
+    cbind(x[i], all_permutations(x[-i]))
+  }))
+}
+
+match_factor_rows = function(F_hat, F_true) {
+  K = nrow(F_true)
+  similarity = row_cosine(F_hat, F_true)
+
+  if (K &lt;= 8) {
+    perms = all_permutations(seq_len(K))
+    scores = apply(perms, 1, function(p) {
+      sum(similarity[cbind(seq_len(K), p)])
+    })
+    learned_to_true = perms[which.max(scores), ]
+  } else {
+    learned_to_true = rep(NA_integer_, K)
+    available = seq_len(K)
+    for (k in seq_len(K)) {
+      best = available[which.max(similarity[k, available])]
+      learned_to_true[k] = best
+      available = setdiff(available, best)
+    }
+  }
+
+  data.frame(
+    learned_factor = seq_len(K),
+    matched_true_factor = learned_to_true,
+    cosine = similarity[cbind(seq_len(K), learned_to_true)]
+  )
+}
+
+support_labels = function(gamma_bar, support_sizes, learned_to_true = NULL) {
+  pip = apply(gamma_bar, c(1, 3), sum)
+  K = ncol(pip)
+
+  if (!is.null(learned_to_true)) {
+    pip_matched = matrix(0, nrow = nrow(pip), ncol = K)
+    for (k in seq_len(K)) {
+      pip_matched[, learned_to_true[k]] = pip_matched[, learned_to_true[k]] +
+        pip[, k]
+    }
+    pip = pip_matched
+  }
+
+  vapply(seq_len(nrow(pip)), function(i) {
+    active = order(pip[i, ], decreasing = TRUE)[seq_len(support_sizes[i])]
+    paste(sort(active), collapse = &quot;,&quot;)
+  }, character(1))
+}
+
+gamma_entropy = function(gamma_bar) {
+  entropy = -gamma_bar * log(gamma_bar)
+  entropy[is.nan(entropy)] = 0
+  mean(rowSums(entropy, dims = 2)) / log(dim(gamma_bar)[3])
+}
+
+plot_elbo = function(fit, main) {
+  idx = fit$elbo_iter
+  plot(idx, fit$elbo[idx], type = &quot;l&quot;, xlab = &quot;Iteration&quot;, ylab = &quot;ELBO&quot;,
+       main = main)
+  points(idx, fit$elbo[idx], pch = 19, cex = 0.5)
+}
+
+true_support_size = rowSums(L &gt; 0)
+true_support_label = apply(L &gt; 0, 1, function(x) {
+  paste(which(x), collapse = &quot;,&quot;)
+})</code></pre>
 </div>
 <div id="fit-with-true-f0" class="section level2">
 <h2>Fit With True F0</h2>
 <p>As a baseline, we first fit the model with the true factor matrix
 fixed. This isolates recovery of the posterior labels from the harder
 problem of learning <code>F</code>.</p>
-<pre class="r"><code>alpha0_true = matrix(1, N, D)
-lambda0_true = matrix(1, N, D)
-
-fit_true_F0 = mf_poi_susie(
+<pre class="r"><code>fit_true_F0 = mf_poi_susie_fixed_F(
   Y = Y,
   F = F0,
-  alpha0 = alpha0_true,
-  lambda0 = lambda0_true,
+  D = D,
   max_iters = 100,
   update_prior = TRUE,
   break_symmetry = FALSE,
   init_seed = 1,
-  update_F = FALSE,
-  fine_init_gamma = FALSE,
-  step_init = 0.1,
-  step_ramp = 50
+  gamma_step_init = 0.1,
+  gamma_step_ramp = 50
 )</code></pre>
-<pre class="r"><code>plot(fit_true_F0$elbo, type = &quot;l&quot;, xlab = &quot;Iteration&quot;, ylab = &quot;ELBO&quot;,
-     main = &quot;ELBO with true F0&quot;)</code></pre>
+<pre class="r"><code>plot_elbo(fit_true_F0, &quot;ELBO with true F0&quot;)</code></pre>
 <p><img src="figure/joint-learn-susie-poi-F.Rmd/elbo-true-F0-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-elbo-true-F0-1">
+Past versions of elbo-true-F0-1.png
+</button>
+</p>
+<div id="fig-elbo-true-F0-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/d39c4cee4d76e3d4c8c4758ed33a1fbeca424f4e/docs/figure/joint-learn-susie-poi-F.Rmd/elbo-true-F0-1.png" target="_blank">d39c4ce</a>
+</td>
+<td>
+dodat-stats
+</td>
+<td>
+2026-06-24
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <pre class="r"><code>top_k_true_F0 = matrix(0, N, D)
 for (d in 1:D) {
   top_k_true_F0[, d] = apply(fit_true_F0$gamma_bar[, d, ], 1, which.max)
@@ -771,6 +954,43 @@ abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
        col = &quot;gray80&quot;, lty = 3)
 box()</code></pre>
 <p><img src="figure/joint-learn-susie-poi-F.Rmd/recovered-labels-true-F0-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-recovered-labels-true-F0-1">
+Past versions of recovered-labels-true-F0-1.png
+</button>
+</p>
+<div id="fig-recovered-labels-true-F0-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/d39c4cee4d76e3d4c8c4758ed33a1fbeca424f4e/docs/figure/joint-learn-susie-poi-F.Rmd/recovered-labels-true-F0-1.png" target="_blank">d39c4ce</a>
+</td>
+<td>
+dodat-stats
+</td>
+<td>
+2026-06-24
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <pre class="r"><code>recovered_by_group_true_F0 = do.call(rbind, lapply(1:8, function(g) {
   idx = which(grp == g)
   tab = table(recovered_label_true_F0[idx])
@@ -781,31 +1001,31 @@ box()</code></pre>
 recovered_by_group_true_F0</code></pre>
 <pre><code>   group recovered_pattern   n
 1      1             1,1,1 160
-2      1             1,1,2   3
-3      1             1,1,3   3
-4      1             1,1,4   2
+2      1             1,1,2   2
+3      1             1,1,3   2
+4      1             1,1,4   3
 5      1             1,1,5   1
-6      1             1,2,2   2
+6      1             1,2,2   3
 7      1             1,2,3   1
-8      1             1,3,3   7
+8      1             1,3,3   8
 9      1             1,3,4   1
 10     1             1,4,4  10
-11     1             1,5,5  10
+11     1             1,5,5   9
 12     2             1,1,1   1
-13     2             1,1,2  11
-14     2             1,2,2   3
-15     2             2,2,2 155
+13     2             1,1,2  10
+14     2             1,2,2   4
+15     2             2,2,2 157
 16     2             2,2,3   2
 17     2             2,2,4   4
-18     2             2,2,5   4
+18     2             2,2,5   2
 19     2             2,3,3   6
 20     2             2,4,4   6
 21     2             2,5,5   8
-22     3             1,1,3  14
+22     3             1,1,3  13
 23     3             1,3,3   4
 24     3             2,2,3   8
 25     3             2,3,3   3
-26     3             3,3,3 163
+26     3             3,3,3 164
 27     3             3,3,4   1
 28     3             3,3,5   1
 29     3             3,4,4   5
@@ -813,193 +1033,252 @@ recovered_by_group_true_F0</code></pre>
 31     4             1,1,1   1
 32     4             1,1,4   3
 33     4             1,3,4   1
-34     4             1,4,4   1
-35     4             2,2,4  12
-36     4             2,3,4   1
-37     4             2,4,4   2
-38     4             3,3,4   6
-39     4             3,4,4   2
-40     4             4,4,4 164
-41     4             4,4,5   2
-42     4             4,5,5   5
-43     5             1,1,5   7
-44     5             1,5,5   1
-45     5             2,2,5   5
-46     5             2,5,5   1
-47     5             3,3,5   7
-48     5             3,4,5   1
-49     5             3,5,5   4
-50     5             4,4,5   5
-51     5             4,5,5   2
-52     5             5,5,5 167
-53     6             1,1,2   1
-54     6             1,1,3   7
-55     6             1,2,2   2
-56     6             1,2,3 163
-57     6             1,2,4   2
-58     6             1,2,5   4
-59     6             1,3,3   4
-60     6             1,3,4   1
-61     6             1,3,5   3
-62     6             2,2,3   7
-63     6             2,3,3   1
-64     6             2,3,4   1
-65     6             2,3,5   3
-66     6             2,4,5   1
-67     7             1,1,2   1
-68     7             1,1,4   1
-69     7             1,2,2   3
-70     7             1,2,3   5
-71     7             1,2,4 163
-72     7             1,2,5   3
-73     7             1,3,4   3
-74     7             1,4,4   2
-75     7             1,4,5   1
-76     7             2,2,3   1
-77     7             2,2,4   8
-78     7             2,3,4   5
-79     7             2,4,4   3
-80     7             2,4,5   1
-81     8             1,2,3   2
-82     8             1,2,5   2
-83     8             1,3,4   1
-84     8             1,3,5   1
-85     8             1,4,5   1
-86     8             2,2,3   7
-87     8             2,2,5   6
-88     8             2,3,3   3
-89     8             2,3,5 169
-90     8             2,4,5   1
-91     8             2,5,5   2
-92     8             3,3,5   1
-93     8             3,4,5   2
-94     8             3,5,5   2</code></pre>
+34     4             2,2,4  12
+35     4             2,4,4   4
+36     4             3,3,4   7
+37     4             3,4,4   1
+38     4             4,4,4 164
+39     4             4,4,5   2
+40     4             4,5,5   5
+41     5             1,1,5   8
+42     5             1,5,5   1
+43     5             2,2,5   5
+44     5             2,5,5   1
+45     5             3,3,5   7
+46     5             3,4,5   1
+47     5             3,5,5   4
+48     5             4,4,5   6
+49     5             4,5,5   2
+50     5             5,5,5 165
+51     6             1,1,2   1
+52     6             1,1,3   7
+53     6             1,2,2   2
+54     6             1,2,3 166
+55     6             1,2,4   2
+56     6             1,2,5   2
+57     6             1,3,3   3
+58     6             1,3,4   1
+59     6             1,3,5   4
+60     6             2,2,3   7
+61     6             2,3,3   1
+62     6             2,3,5   3
+63     6             2,4,5   1
+64     7             1,1,2   1
+65     7             1,1,4   3
+66     7             1,2,2   4
+67     7             1,2,3   4
+68     7             1,2,4 166
+69     7             1,2,5   2
+70     7             1,3,4   3
+71     7             1,4,4   3
+72     7             1,4,5   1
+73     7             2,2,4   4
+74     7             2,3,4   5
+75     7             2,4,4   3
+76     7             2,4,5   1
+77     8             1,2,3   2
+78     8             1,2,5   1
+79     8             1,3,4   1
+80     8             1,3,5   2
+81     8             1,4,5   1
+82     8             2,2,3   4
+83     8             2,2,5   5
+84     8             2,3,3   4
+85     8             2,3,5 170
+86     8             2,4,5   2
+87     8             2,5,5   3
+88     8             3,4,5   2
+89     8             3,5,5   3</code></pre>
 </div>
 <div id="fit-with-unknown-f" class="section level2">
 <h2>Fit With Unknown F</h2>
-<p>The fit starts from a random row-normalized factor matrix and updates
-<code>F</code> inside the variational loop.</p>
-<pre class="r"><code>alpha0 = matrix(1, N, D)
-lambda0 = matrix(1, N, D)
-
-F = matrix(rgamma(M * K, shape = 0.2, rate = 0.05), nrow = K, ncol = M)
-F = F / rowSums(F)
-
-fit = mf_poi_susie(
+<p>The fit initializes <code>F</code> with Poisson NMF, initializes the
+row-level sparse assignments from the Poisson-NMF loading matrix, then
+updates <code>F</code> inside the variational loop with damping.</p>
+<pre class="r"><code>fit = mf_poi_susie(
   Y = Y,
-  F = F,
-  alpha0 = alpha0,
-  lambda0 = lambda0,
+  K = K,
+  D = D,
   max_iters = 100,
   update_prior = TRUE,
   break_symmetry = FALSE,
   init_seed = 1,
-  update_F = TRUE,
-  fine_init_gamma = FALSE,
-  step_init = 0.1,
-  step_ramp = 50
+  init_F = &quot;poisson_nmf&quot;,
+  nmf_iters = 200,
+  init_gamma_from_nmf = TRUE,
+  gamma_step_init = 0.1,
+  gamma_step_ramp = 50,
+  F_step_init = 0.05,
+  F_step_ramp = 75,
+  elbo_every = 5,
+  tol = 5e-4,
+  min_iters = 20,
+  patience = 2
 )</code></pre>
-<pre class="r"><code>plot(fit$elbo, type = &quot;l&quot;, xlab = &quot;Iteration&quot;, ylab = &quot;ELBO&quot;,
-     main = &quot;Variational objective&quot;)</code></pre>
+<pre class="r"><code>plot_elbo(fit, &quot;Variational objective&quot;)</code></pre>
 <p><img src="figure/joint-learn-susie-poi-F.Rmd/elbo-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-elbo-1">
+Past versions of elbo-1.png
+</button>
+</p>
+<div id="fig-elbo-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/d39c4cee4d76e3d4c8c4758ed33a1fbeca424f4e/docs/figure/joint-learn-susie-poi-F.Rmd/elbo-1.png" target="_blank">d39c4ce</a>
+</td>
+<td>
+dodat-stats
+</td>
+<td>
+2026-06-24
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<pre class="r"><code>data.frame(
+  converged = fit$converged,
+  n_iter = fit$n_iter,
+  final_elbo = tail(fit$elbo[fit$elbo_iter], 1)
+)</code></pre>
+<pre><code>  converged n_iter final_elbo
+1      TRUE     30  -169082.2</code></pre>
+</div>
+<div id="factor-recovery" class="section level2">
+<h2>Factor Recovery</h2>
+<p>Rows of the learned <code>F</code> are identifiable only up to
+permutation, so we first match learned rows to true rows using cosine
+similarity.</p>
+<pre class="r"><code>factor_match = match_factor_rows(fit$F, F0)
+learned_to_true = factor_match$matched_true_factor
+
+factor_match</code></pre>
+<pre><code>  learned_factor matched_true_factor    cosine
+1              1                   1 0.9871834
+2              2                   5 0.9798953
+3              3                   3 0.9854459
+4              4                   4 0.9804036
+5              5                   2 0.9844566</code></pre>
+<pre class="r"><code>data.frame(
+  mean_matched_cosine = mean(factor_match$cosine),
+  min_matched_cosine = min(factor_match$cosine)
+)</code></pre>
+<pre><code>  mean_matched_cosine min_matched_cosine
+1            0.983477          0.9798953</code></pre>
 </div>
 <div id="recovery" class="section level2">
 <h2>Recovery</h2>
 <p>For each observation and effect, we summarize the factor with the
-largest posterior assignment probability.</p>
+largest posterior assignment probability, then remap learned factor
+labels to the matched true labels.</p>
 <pre class="r"><code>top_k = matrix(0, N, D)
 for (d in 1:D) {
   top_k[, d] = apply(fit$gamma_bar[, d, ], 1, which.max)
 }
+top_k_matched = matrix(learned_to_true[top_k], nrow = N, ncol = D)
 
 recovered_by_group = do.call(rbind, lapply(1:8, function(g) {
   idx = which(grp == g)
-  tab = table(apply(top_k[idx, ], 1, function(x) paste(sort(x), collapse = &quot;,&quot;)))
+  tab = table(apply(top_k_matched[idx, ], 1, function(x) {
+    paste(sort(x), collapse = &quot;,&quot;)
+  }))
   data.frame(group = g, recovered_pattern = names(tab), n = as.integer(tab),
              row.names = NULL)
 }))
 
 recovered_by_group</code></pre>
 <pre><code>   group recovered_pattern   n
-1      1             1,1,4   7
-2      1             1,3,4   1
-3      1             2,2,3   1
-4      1             2,2,4   5
-5      1             2,4,4   1
-6      1             3,3,3   3
-7      1             3,3,4  15
-8      1             3,4,4  10
-9      1             3,5,5   2
-10     1             4,4,4 148
-11     1             4,5,5   7
-12     2             1,1,2   1
-13     2             1,2,2   1
-14     2             2,2,2 182
-15     2             2,2,3   1
-16     2             2,2,4   3
-17     2             2,2,5   1
-18     2             2,3,3   2
-19     2             2,4,4   8
-20     2             4,4,4   1
-21     3             1,1,5   2
-22     3             1,5,5   1
-23     3             2,2,2   1
-24     3             2,2,5   2
-25     3             2,5,5   2
-26     3             4,4,5   9
-27     3             5,5,5 183
-28     4             1,1,3   9
-29     4             1,3,3   1
-30     4             1,3,5   1
-31     4             2,2,3  17
-32     4             2,3,3   3
-33     4             3,3,3 113
-34     4             3,3,5   5
-35     4             3,4,4   5
-36     4             3,5,5  46
-37     5             1,1,1 153
-38     5             1,1,2   2
-39     5             1,1,4   2
-40     5             1,1,5   1
-41     5             1,2,2  27
-42     5             1,3,3   2
-43     5             1,4,4   9
-44     5             1,5,5   4
-45     6             2,2,4  86
-46     6             2,2,5  36
-47     6             2,4,4  15
-48     6             2,4,5  26
-49     6             2,5,5   3
-50     6             4,4,4   8
-51     6             4,4,5   8
-52     6             4,5,5  15
-53     6             5,5,5   3
-54     7             1,1,3   1
-55     7             1,2,3   1
-56     7             2,2,3 109
-57     7             2,3,3  23
-58     7             2,3,4   5
-59     7             2,3,5   2
-60     7             3,3,3   9
-61     7             3,3,4   8
-62     7             3,3,5   6
-63     7             3,4,4  15
-64     7             3,5,5  21
-65     8             1,1,1   3
-66     8             1,1,2  25
-67     8             1,1,4   3
-68     8             1,1,5   7
-69     8             1,2,2  93
-70     8             1,2,4   1
-71     8             1,2,5  14
-72     8             1,4,4  16
-73     8             1,4,5   2
-74     8             1,5,5  15
-75     8             2,2,2   3
-76     8             2,2,4   1
-77     8             2,2,5   6
-78     8             2,4,4   3
-79     8             2,5,5   8</code></pre>
+1      1             1,1,1 149
+2      1             1,1,2  10
+3      1             1,1,3   2
+4      1             1,1,4   6
+5      1             1,1,5   3
+6      1             1,2,2   4
+7      1             1,2,3   2
+8      1             1,2,4   5
+9      1             1,3,3   9
+10     1             1,4,4   5
+11     1             1,5,5   5
+12     2             1,1,1   1
+13     2             1,1,2   9
+14     2             1,2,2   4
+15     2             1,2,3   4
+16     2             1,2,4   1
+17     2             1,2,5   1
+18     2             2,2,2 147
+19     2             2,2,3   2
+20     2             2,2,4   3
+21     2             2,2,5   2
+22     2             2,3,3   5
+23     2             2,3,4   2
+24     2             2,3,5   1
+25     2             2,4,4   9
+26     2             2,4,5   1
+27     2             2,5,5   8
+28     3             1,1,3   2
+29     3             1,2,3   1
+30     3             1,3,3   2
+31     3             1,3,5   1
+32     3             2,2,3   2
+33     3             2,3,3   2
+34     3             2,3,4   1
+35     3             3,3,3 170
+36     3             3,3,4   4
+37     3             3,3,5   2
+38     3             3,4,4   8
+39     3             3,5,5   5
+40     4             1,1,1   1
+41     4             1,1,4   4
+42     4             1,2,4  12
+43     4             1,3,4   2
+44     4             1,4,4   1
+45     4             2,2,4   9
+46     4             2,4,4   6
+47     4             2,4,5   1
+48     4             3,3,4  14
+49     4             3,4,4   3
+50     4             3,4,5   1
+51     4             4,4,4 129
+52     4             4,4,5   5
+53     4             4,5,5  12
+54     5             1,1,5   6
+55     5             1,2,5   1
+56     5             1,3,5   1
+57     5             1,5,5   1
+58     5             2,2,5   2
+59     5             2,3,5   2
+60     5             2,4,5   7
+61     5             2,5,5   6
+62     5             3,3,5  11
+63     5             3,5,5   3
+64     5             4,4,5   4
+65     5             4,5,5   9
+66     5             5,5,5 147
+67     6             1,2,3 199
+68     6             1,3,5   1
+69     7             1,2,4 198
+70     7             1,3,4   1
+71     7             2,2,4   1
+72     8             2,2,3   1
+73     8             2,3,5 199</code></pre>
 <pre class="r"><code>representative_idx = c(
   which(grp == 1)[1],
   which(grp == 2)[1],
@@ -1023,25 +1302,25 @@ names(representative_gamma) = paste0(&quot;group_&quot;, 1:8)
 representative_gamma</code></pre>
 <pre><code>$group_1
          factor_1 factor_2 factor_3 factor_4 factor_5
-effect_1      0.0      0.0     0.02     0.98      0.0
-effect_2      0.2      0.2     0.20     0.20      0.2
-effect_3      0.2      0.2     0.20     0.20      0.2
+effect_1      1.0      0.0      0.0      0.0      0.0
+effect_2      0.2      0.2      0.2      0.2      0.2
+effect_3      0.2      0.2      0.2      0.2      0.2
 
 $group_2
          factor_1 factor_2 factor_3 factor_4 factor_5
-effect_1      0.2      0.2      0.2      0.2      0.2
-effect_2      0.0      1.0      0.0      0.0      0.0
+effect_1      0.0      0.0      0.0      0.0      1.0
+effect_2      0.2      0.2      0.2      0.2      0.2
 effect_3      0.2      0.2      0.2      0.2      0.2
 
 $group_3
          factor_1 factor_2 factor_3 factor_4 factor_5
-effect_1      0.2      0.2      0.2      0.2      0.2
+effect_1      0.0      0.0      1.0      0.0      0.0
 effect_2      0.2      0.2      0.2      0.2      0.2
-effect_3      0.0      0.0      0.0      0.0      1.0
+effect_3      0.2      0.2      0.2      0.2      0.2
 
 $group_4
          factor_1 factor_2 factor_3 factor_4 factor_5
-effect_1      0.0      0.0      1.0      0.0      0.0
+effect_1      0.0      0.0      0.0      1.0      0.0
 effect_2      0.2      0.2      0.2      0.2      0.2
 effect_3      0.2      0.2      0.2      0.2      0.2
 
@@ -1053,30 +1332,30 @@ effect_3      0.2      0.2      0.2      0.2      0.2
 
 $group_6
          factor_1 factor_2 factor_3 factor_4 factor_5
-effect_1      0.0      0.0      0.0      0.0      1.0
-effect_2      0.2      0.2      0.2      0.2      0.2
-effect_3      0.0      0.0      0.0      1.0      0.0
+effect_1        0        0        0        0        1
+effect_2        1        0        0        0        0
+effect_3        0        0        1        0        0
 
 $group_7
          factor_1 factor_2 factor_3 factor_4 factor_5
-effect_1      0.0      0.0      1.0      0.0      0.0
-effect_2      0.2      0.2      0.2      0.2      0.2
-effect_3      0.2      0.2      0.2      0.2      0.2
+effect_1        0        0        0        0        1
+effect_2        1        0        0        0        0
+effect_3        0        0        0        1        0
 
 $group_8
          factor_1 factor_2 factor_3 factor_4 factor_5
-effect_1      0.0      0.0      0.0      0.0      1.0
-effect_2      0.2      0.2      0.2      0.2      0.2
-effect_3      0.2      0.2      0.2      0.2      0.2</code></pre>
+effect_1        0        0        1        0        0
+effect_2        0        1        0        0        0
+effect_3        0        0        0        0        1</code></pre>
 <pre class="r"><code>recovered_factor_mat = matrix(0, nrow = K, ncol = N)
 for (i in 1:N) {
-  recovered_factor_mat[top_k[i, ], i] =
-    recovered_factor_mat[top_k[i, ], i] + 1
+  recovered_factor_mat[top_k_matched[i, ], i] =
+    recovered_factor_mat[top_k_matched[i, ], i] + 1
 }
 
 image(x = seq_len(N), y = seq_len(K), z = t(recovered_factor_mat),
       axes = FALSE, xlab = &quot;Sample&quot;, ylab = &quot;Recovered factor&quot;,
-      main = &quot;Recovered factors with learned F&quot;,
+      main = &quot;Recovered factors with learned F, matched to F0&quot;,
       col = c(&quot;white&quot;, &quot;firebrick&quot;, &quot;darkred&quot;))
 axis(1, at = seq(n_per_group / 2, N, by = n_per_group),
      labels = paste(&quot;G&quot;, 1:8))
@@ -1085,11 +1364,66 @@ abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
        col = &quot;gray80&quot;, lty = 3)
 box()</code></pre>
 <p><img src="figure/joint-learn-susie-poi-F.Rmd/recovered-factors-learned-F-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
-<p>The learned <code>F</code> is identifiable only up to permutation of
-its rows. A direct row-wise comparison to <code>F0</code> is therefore
-not meaningful without matching rows, but the group-level top-factor
-summaries show whether observations are assigned to stable one-factor or
-three-factor patterns after jointly updating <code>F</code>.</p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-recovered-factors-learned-F-1">
+Past versions of recovered-factors-learned-F-1.png
+</button>
+</p>
+<div id="fig-recovered-factors-learned-F-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/d39c4cee4d76e3d4c8c4758ed33a1fbeca424f4e/docs/figure/joint-learn-susie-poi-F.Rmd/recovered-factors-learned-F-1.png" target="_blank">d39c4ce</a>
+</td>
+<td>
+dodat-stats
+</td>
+<td>
+2026-06-24
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<pre class="r"><code>support_recovery = data.frame(
+  fit = c(&quot;true_F0&quot;, &quot;learned_F&quot;),
+  exact_support_accuracy = c(
+    mean(support_labels(fit_true_F0$gamma_bar, true_support_size) ==
+           true_support_label),
+    mean(support_labels(fit$gamma_bar, true_support_size, learned_to_true) ==
+           true_support_label)
+  ),
+  mean_normalized_gamma_entropy = c(
+    gamma_entropy(fit_true_F0$gamma_bar),
+    gamma_entropy(fit$gamma_bar)
+  )
+)
+
+support_recovery</code></pre>
+<pre><code>        fit exact_support_accuracy mean_normalized_gamma_entropy
+1   true_F0               0.965000                     0.3646963
+2 learned_F               0.995625                     0.3948469</code></pre>
+<p>The support accuracy uses the true number of active factors for each
+simulated observation and asks whether the top posterior inclusion
+scores recover that support. This avoids penalizing one-factor
+observations only because the model has <code>D = 3</code> possible
+effects.</p>
 <br>
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
@@ -1116,21 +1450,17 @@ tzcode source: internal
 attached base packages:
 [1] stats     graphics  grDevices utils     datasets  methods   base     
 
-other attached packages:
-[1] workflowr_1.7.2
-
 loaded via a namespace (and not attached):
- [1] vctrs_0.7.1       httr_1.4.8        cli_3.6.6         knitr_1.51       
- [5] rlang_1.2.0       xfun_0.56         stringi_1.8.7     otel_0.2.0       
- [9] processx_3.8.6    promises_1.5.0    jsonlite_2.0.0    glue_1.8.0       
-[13] rprojroot_2.1.1   git2r_0.36.2      htmltools_0.5.9   httpuv_1.6.17    
-[17] ps_1.9.1          sass_0.4.10       rmarkdown_2.30    jquerylib_0.1.4  
-[21] tibble_3.3.1      evaluate_1.0.5    fastmap_1.2.0     yaml_2.3.12      
-[25] lifecycle_1.0.5   whisker_0.4.1     stringr_1.6.0     compiler_4.5.2   
-[29] fs_2.1.0          pkgconfig_2.0.3   Rcpp_1.1.1        rstudioapi_0.18.0
-[33] later_1.4.8       digest_0.6.39     R6_2.6.1          pillar_1.11.1    
-[37] callr_3.8.0       magrittr_2.0.4    bslib_0.10.0      tools_4.5.2      
-[41] cachem_1.1.0      getPass_0.2-4    </code></pre>
+ [1] vctrs_0.7.1       cli_3.6.6         knitr_1.51        rlang_1.2.0      
+ [5] xfun_0.56         stringi_1.8.7     otel_0.2.0        promises_1.5.0   
+ [9] jsonlite_2.0.0    workflowr_1.7.2   glue_1.8.0        rprojroot_2.1.1  
+[13] git2r_0.36.2      htmltools_0.5.9   httpuv_1.6.17     sass_0.4.10      
+[17] rmarkdown_2.30    jquerylib_0.1.4   evaluate_1.0.5    tibble_3.3.1     
+[21] fastmap_1.2.0     yaml_2.3.12       lifecycle_1.0.5   whisker_0.4.1    
+[25] stringr_1.6.0     compiler_4.5.2    fs_2.1.0          Rcpp_1.1.1       
+[29] pkgconfig_2.0.3   rstudioapi_0.18.0 later_1.4.8       digest_0.6.39    
+[33] R6_2.6.1          pillar_1.11.1     magrittr_2.0.4    bslib_0.10.0     
+[37] tools_4.5.2       cachem_1.1.0     </code></pre>
 </div>
 </div>
 </div>

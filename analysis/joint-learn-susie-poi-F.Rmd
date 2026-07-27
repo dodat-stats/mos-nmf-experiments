@@ -37,11 +37,11 @@ Each effect chooses one factor row through
 \(\gamma_{id} \in \{1,\ldots,K\}\), and its size is \(\beta_{id} > 0\).
 The variational fit estimates posterior assignment probabilities
 `gamma_bar[i, d, k]`, Gamma variational parameters for the effect sizes, and,
-when `update_F = TRUE`, the shared factor matrix `F`.
+in the unknown-`F` fit, the shared factor matrix `F`.
 
 The simulation below first checks recovery when the true factor matrix `F0` is
-given to the algorithm, then repeats the fit from a random initialized `F` while
-learning `F` jointly.
+given to the algorithm, then repeats the fit with `F` initialized by Poisson NMF
+and learned jointly.
 
 ## Simulate Data
 
@@ -103,6 +103,85 @@ legend("topright", legend = paste("factor", 1:K), col = 1:K, lty = 1,
        bty = "n")
 ```
 
+```{r diagnostic-helpers}
+row_cosine = function(A, B) {
+  A_norm = sqrt(rowSums(A^2))
+  B_norm = sqrt(rowSums(B^2))
+  (A %*% t(B)) / (A_norm %o% B_norm)
+}
+
+all_permutations = function(x) {
+  if (length(x) == 1) return(matrix(x, nrow = 1))
+  do.call(rbind, lapply(seq_along(x), function(i) {
+    cbind(x[i], all_permutations(x[-i]))
+  }))
+}
+
+match_factor_rows = function(F_hat, F_true) {
+  K = nrow(F_true)
+  similarity = row_cosine(F_hat, F_true)
+
+  if (K <= 8) {
+    perms = all_permutations(seq_len(K))
+    scores = apply(perms, 1, function(p) {
+      sum(similarity[cbind(seq_len(K), p)])
+    })
+    learned_to_true = perms[which.max(scores), ]
+  } else {
+    learned_to_true = rep(NA_integer_, K)
+    available = seq_len(K)
+    for (k in seq_len(K)) {
+      best = available[which.max(similarity[k, available])]
+      learned_to_true[k] = best
+      available = setdiff(available, best)
+    }
+  }
+
+  data.frame(
+    learned_factor = seq_len(K),
+    matched_true_factor = learned_to_true,
+    cosine = similarity[cbind(seq_len(K), learned_to_true)]
+  )
+}
+
+support_labels = function(gamma_bar, support_sizes, learned_to_true = NULL) {
+  pip = apply(gamma_bar, c(1, 3), sum)
+  K = ncol(pip)
+
+  if (!is.null(learned_to_true)) {
+    pip_matched = matrix(0, nrow = nrow(pip), ncol = K)
+    for (k in seq_len(K)) {
+      pip_matched[, learned_to_true[k]] = pip_matched[, learned_to_true[k]] +
+        pip[, k]
+    }
+    pip = pip_matched
+  }
+
+  vapply(seq_len(nrow(pip)), function(i) {
+    active = order(pip[i, ], decreasing = TRUE)[seq_len(support_sizes[i])]
+    paste(sort(active), collapse = ",")
+  }, character(1))
+}
+
+gamma_entropy = function(gamma_bar) {
+  entropy = -gamma_bar * log(gamma_bar)
+  entropy[is.nan(entropy)] = 0
+  mean(rowSums(entropy, dims = 2)) / log(dim(gamma_bar)[3])
+}
+
+plot_elbo = function(fit, main) {
+  idx = fit$elbo_iter
+  plot(idx, fit$elbo[idx], type = "l", xlab = "Iteration", ylab = "ELBO",
+       main = main)
+  points(idx, fit$elbo[idx], pch = 19, cex = 0.5)
+}
+
+true_support_size = rowSums(L > 0)
+true_support_label = apply(L > 0, 1, function(x) {
+  paste(which(x), collapse = ",")
+})
+```
+
 ## Fit With True F0
 
 As a baseline, we first fit the model with the true factor matrix fixed. This
@@ -110,28 +189,21 @@ isolates recovery of the posterior labels from the harder problem of learning
 `F`.
 
 ```{r fit-true-F0}
-alpha0_true = matrix(1, N, D)
-lambda0_true = matrix(1, N, D)
-
-fit_true_F0 = mf_poi_susie(
+fit_true_F0 = mf_poi_susie_fixed_F(
   Y = Y,
   F = F0,
-  alpha0 = alpha0_true,
-  lambda0 = lambda0_true,
+  D = D,
   max_iters = 100,
   update_prior = TRUE,
   break_symmetry = FALSE,
   init_seed = 1,
-  update_F = FALSE,
-  fine_init_gamma = FALSE,
-  step_init = 0.1,
-  step_ramp = 50
+  gamma_step_init = 0.1,
+  gamma_step_ramp = 50
 )
 ```
 
 ```{r elbo-true-F0}
-plot(fit_true_F0$elbo, type = "l", xlab = "Iteration", ylab = "ELBO",
-     main = "ELBO with true F0")
+plot_elbo(fit_true_F0, "ELBO with true F0")
 ```
 
 ```{r recovered-labels-true-F0}
@@ -175,51 +247,78 @@ recovered_by_group_true_F0
 
 ## Fit With Unknown F
 
-The fit starts from a random row-normalized factor matrix and updates `F` inside
-the variational loop.
+The fit initializes `F` with Poisson NMF, initializes the row-level sparse
+assignments from the Poisson-NMF loading matrix, then updates `F` inside the
+variational loop with damping.
 
 ```{r fit}
-alpha0 = matrix(1, N, D)
-lambda0 = matrix(1, N, D)
-
-F = matrix(rgamma(M * K, shape = 0.2, rate = 0.05), nrow = K, ncol = M)
-F = F / rowSums(F)
-
 fit = mf_poi_susie(
   Y = Y,
-  F = F,
-  alpha0 = alpha0,
-  lambda0 = lambda0,
+  K = K,
+  D = D,
   max_iters = 100,
   update_prior = TRUE,
   break_symmetry = FALSE,
   init_seed = 1,
-  update_F = TRUE,
-  fine_init_gamma = FALSE,
-  step_init = 0.1,
-  step_ramp = 50
+  init_F = "poisson_nmf",
+  nmf_iters = 200,
+  init_gamma_from_nmf = TRUE,
+  gamma_step_init = 0.1,
+  gamma_step_ramp = 50,
+  F_step_init = 0.05,
+  F_step_ramp = 75,
+  elbo_every = 5,
+  tol = 5e-4,
+  min_iters = 20,
+  patience = 2
 )
 ```
 
 ```{r elbo}
-plot(fit$elbo, type = "l", xlab = "Iteration", ylab = "ELBO",
-     main = "Variational objective")
+plot_elbo(fit, "Variational objective")
+
+data.frame(
+  converged = fit$converged,
+  n_iter = fit$n_iter,
+  final_elbo = tail(fit$elbo[fit$elbo_iter], 1)
+)
+```
+
+## Factor Recovery
+
+Rows of the learned `F` are identifiable only up to permutation, so we first
+match learned rows to true rows using cosine similarity.
+
+```{r factor-recovery}
+factor_match = match_factor_rows(fit$F, F0)
+learned_to_true = factor_match$matched_true_factor
+
+factor_match
+
+data.frame(
+  mean_matched_cosine = mean(factor_match$cosine),
+  min_matched_cosine = min(factor_match$cosine)
+)
 ```
 
 ## Recovery
 
 For each observation and effect, we summarize the factor with the largest
-posterior assignment probability.
+posterior assignment probability, then remap learned factor labels to the
+matched true labels.
 
 ```{r top-k}
 top_k = matrix(0, N, D)
 for (d in 1:D) {
   top_k[, d] = apply(fit$gamma_bar[, d, ], 1, which.max)
 }
+top_k_matched = matrix(learned_to_true[top_k], nrow = N, ncol = D)
 
 recovered_by_group = do.call(rbind, lapply(1:8, function(g) {
   idx = which(grp == g)
-  tab = table(apply(top_k[idx, ], 1, function(x) paste(sort(x), collapse = ",")))
+  tab = table(apply(top_k_matched[idx, ], 1, function(x) {
+    paste(sort(x), collapse = ",")
+  }))
   data.frame(group = g, recovered_pattern = names(tab), n = as.integer(tab),
              row.names = NULL)
 }))
@@ -254,13 +353,13 @@ representative_gamma
 ```{r recovered-factors-learned-F}
 recovered_factor_mat = matrix(0, nrow = K, ncol = N)
 for (i in 1:N) {
-  recovered_factor_mat[top_k[i, ], i] =
-    recovered_factor_mat[top_k[i, ], i] + 1
+  recovered_factor_mat[top_k_matched[i, ], i] =
+    recovered_factor_mat[top_k_matched[i, ], i] + 1
 }
 
 image(x = seq_len(N), y = seq_len(K), z = t(recovered_factor_mat),
       axes = FALSE, xlab = "Sample", ylab = "Recovered factor",
-      main = "Recovered factors with learned F",
+      main = "Recovered factors with learned F, matched to F0",
       col = c("white", "firebrick", "darkred"))
 axis(1, at = seq(n_per_group / 2, N, by = n_per_group),
      labels = paste("G", 1:8))
@@ -270,7 +369,25 @@ abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
 box()
 ```
 
-The learned `F` is identifiable only up to permutation of its rows. A direct
-row-wise comparison to `F0` is therefore not meaningful without matching rows,
-but the group-level top-factor summaries show whether observations are assigned
-to stable one-factor or three-factor patterns after jointly updating `F`.
+```{r support-accuracy}
+support_recovery = data.frame(
+  fit = c("true_F0", "learned_F"),
+  exact_support_accuracy = c(
+    mean(support_labels(fit_true_F0$gamma_bar, true_support_size) ==
+           true_support_label),
+    mean(support_labels(fit$gamma_bar, true_support_size, learned_to_true) ==
+           true_support_label)
+  ),
+  mean_normalized_gamma_entropy = c(
+    gamma_entropy(fit_true_F0$gamma_bar),
+    gamma_entropy(fit$gamma_bar)
+  )
+)
+
+support_recovery
+```
+
+The support accuracy uses the true number of active factors for each simulated
+observation and asks whether the top posterior inclusion scores recover that
+support. This avoids penalizing one-factor observations only because the model
+has `D = 3` possible effects.

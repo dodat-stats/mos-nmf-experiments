@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+
+
+<title>MF Poisson SuSiE With Overspecified K</title>
+
+<script src="site_libs/header-attrs-2.30/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.13.2/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<link href="site_libs/font-awesome-6.5.2/css/all.min.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet" />
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/main/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">mos-nmf-experiments</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="poisson-susie.html">Poisson SuSiE</a>
+</li>
+<li>
+  <a href="joint-learn-susie-poi-F.html">Joint Learn F</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://github.com/dodat-stats/mos-nmf-experiments">
+    <span class="fab fa-github"></span>
+     
+    Source code
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">MF Poisson SuSiE With Overspecified K</h1>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
+workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span
+class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> </a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2026-07-26
+</p>
+<p>
+<strong>Checks:</strong> <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 6
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> 1
+</p>
+<p>
+<strong>Knit directory:</strong> <code>mos-nmf-experiments/</code> <span
+class="glyphicon glyphicon-question-sign" aria-hidden="true"
+title="This is the local directory in which the code in this file was executed.">
+</span>
+</p>
+<p>
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a>
+analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version
+1.7.2). The <em>Checks</em> tab describes the reproducibility checks
+that were applied when the results were created. The <em>Past
+versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguncommittedchanges">
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> <strong>R Markdown file:</strong> uncommitted
+changes </a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguncommittedchanges"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>The R Markdown is untracked by Git. To know which version of the R
+Markdown file created these results, you’ll want to first commit it to
+the Git repo. If you’re still working on the analysis, you can ignore
+this warning. When you’re finished, you can run
+<code>wflow_publish</code> to commit the R Markdown file and build the
+HTML.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the
+global environment can affect the analysis in your R Markdown file in
+unknown ways. For reproduciblity it’s best to always run the code in an
+empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20260624code">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Seed:</strong>
+<code>set.seed(20260624)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20260624code"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20260624)</code> was run prior to running
+the code in the R Markdown file. Setting a seed ensures that any results
+that rely on randomness, e.g. subsampling or permutations, are
+reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Session information:</strong>
+recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package
+versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be
+confident that you successfully produced the results during this
+run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr
+project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstreef889e0dd4934d9caabb3f72e952c368655d48c21targetblankf889e0da">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Repository version:</strong>
+<a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/f889e0dd4934d9caabb3f72e952c368655d48c21" target="_blank">f889e0d</a>
+</a>
+</p>
+</div>
+<div
+id="strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstreef889e0dd4934d9caabb3f72e952c368655d48c21targetblankf889e0da"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development
+and connecting the code version to the results is critical for
+reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version
+<a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/f889e0dd4934d9caabb3f72e952c368655d48c21" target="_blank">f889e0d</a>.
+See the <em>Past versions</em> tab to see a history of the changes made
+to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for
+the analysis have been committed to Git prior to generating the results
+(you can use <code>wflow_publish</code> or
+<code>wflow_git_commit</code>). workflowr only checks the R Markdown
+file, but you know if there are other scripts or data files that it
+depends on. Below is the status of the Git repository when the results
+were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .DS_Store
+    Ignored:    .RData
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+
+Untracked files:
+    Untracked:  analysis/overspecify-D-mf-poi-susie.Rmd
+    Untracked:  analysis/overspecify-K-mf-poi-susie.Rmd
+    Untracked:  tex/model-ideas.aux
+    Untracked:  tex/model-ideas.bbl
+    Untracked:  tex/model-ideas.blg
+    Untracked:  tex/model-ideas.brf
+    Untracked:  tex/model-ideas.log
+    Untracked:  tex/model-ideas.out
+    Untracked:  tex/model-ideas.pdf
+    Untracked:  tex/model-ideas.synctex.gz
+    Untracked:  tex/model-ideas.tex
+    Untracked:  tex/sparsity.bib
+
+Unstaged changes:
+    Modified:   analysis/index.Rmd
+    Modified:   analysis/joint-learn-susie-poi-F.Rmd
+    Modified:   code/joint-learn-susie-poi-F.R
+    Modified:   tex/mf-poi-susie.aux
+    Modified:   tex/mf-poi-susie.log
+    Modified:   tex/mf-poi-susie.pdf
+    Deleted:    tex/mf-poi-susie.synctex.gz
+    Modified:   tex/mf-poi-susie.tex
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not
+included in this status report because it is ok for generated content to
+have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+<p>
+There are no past versions. Publish this analysis with
+<code>wflow_publish()</code> to start tracking its development.
+</p>
+<hr>
+</div>
+</div>
+</div>
+<p>This page stress-tests the MF-Poisson-SuSiE fit when the number of
+fitted factors is larger than the true number of factors. The main
+question is whether the fitted model still recovers the true factor rows
+and sparse supports, and whether the extra factor rows remain weakly
+used or become duplicates.</p>
+<pre class="r"><code>source(&quot;code/joint-learn-susie-poi-F.R&quot;)</code></pre>
+<div id="simulate-data" class="section level2">
+<h2>Simulate Data</h2>
+<p>The data-generating mechanism matches the current joint-learning
+experiment: five true factor rows, three possible effects per
+observation, five one-factor groups, and three three-factor groups.</p>
+<pre class="r"><code>set.seed(42)
+
+N = 1600
+M = 2000
+K_true = 5
+D = 3
+K_fit = 7
+
+F0 = matrix(rgamma(M * K_true, shape = 0.1, rate = 0.01),
+            nrow = K_true, ncol = M)
+F0 = F0 / rowSums(F0)
+
+n_per_group = N / 8
+L = matrix(0, nrow = N, ncol = K_true)
+grp = rep(1:8, each = n_per_group)
+
+for (g in 1:5) {
+  L[grp == g, g] = matrix(rgamma(n_per_group, 10, 1), n_per_group, 1)
+}
+
+L[grp == 6, c(1, 2, 3)] = matrix(rgamma(n_per_group * 3, 20, 1),
+                                  n_per_group, 3)
+L[grp == 7, c(1, 2, 4)] = matrix(rgamma(n_per_group * 3, 20, 1),
+                                  n_per_group, 3)
+L[grp == 8, c(2, 3, 5)] = matrix(rgamma(n_per_group * 3, 20, 1),
+                                  n_per_group, 3)
+
+rate = L %*% F0
+Y = matrix(rpois(N * M, rate), nrow = N, ncol = M)
+
+data.frame(
+  N = N,
+  M = M,
+  K_true = K_true,
+  K_fit = K_fit,
+  D = D,
+  total_count = sum(Y),
+  nonzero_entries = sum(Y &gt; 0)
+)</code></pre>
+<pre><code>     N    M K_true K_fit D total_count nonzero_entries
+1 1600 2000      5     7 3       45971           43361</code></pre>
+<pre class="r"><code>true_patterns = vapply(1:8, function(g) {
+  paste(which(colSums(L[grp == g, , drop = FALSE]) &gt; 0), collapse = &quot;,&quot;)
+}, character(1))
+
+data.frame(group = 1:8, true_active_factors = true_patterns)</code></pre>
+<pre><code>  group true_active_factors
+1     1                   1
+2     2                   2
+3     3                   3
+4     4                   4
+5     5                   5
+6     6               1,2,3
+7     7               1,2,4
+8     8               2,3,5</code></pre>
+</div>
+<div id="diagnostics" class="section level2">
+<h2>Diagnostics</h2>
+<p>With <code>K_fit &gt; K_true</code>, factor recovery is rectangular.
+We match each true factor to one learned factor row, then separately
+inspect the usage and nearest true factor for every learned row.</p>
+<pre class="r"><code>row_cosine = function(A, B) {
+  A_norm = sqrt(rowSums(A^2))
+  B_norm = sqrt(rowSums(B^2))
+  (A %*% t(B)) / (A_norm %o% B_norm)
+}
+
+all_permutations = function(x) {
+  if (length(x) == 1) return(matrix(x, nrow = 1))
+  do.call(rbind, lapply(seq_along(x), function(i) {
+    cbind(x[i], all_permutations(x[-i]))
+  }))
+}
+
+match_true_to_learned = function(F_hat, F_true) {
+  K_fit = nrow(F_hat)
+  K_true = nrow(F_true)
+  similarity = row_cosine(F_hat, F_true)
+
+  best_score = -Inf
+  best_learned_for_true = rep(NA_integer_, K_true)
+
+  learned_sets = combn(seq_len(K_fit), K_true, simplify = FALSE)
+  for (learned_set in learned_sets) {
+    perms = all_permutations(learned_set)
+    scores = apply(perms, 1, function(p) {
+      sum(similarity[cbind(p, seq_len(K_true))])
+    })
+    idx = which.max(scores)
+    if (scores[idx] &gt; best_score) {
+      best_score = scores[idx]
+      best_learned_for_true = perms[idx, ]
+    }
+  }
+
+  learned_to_true = rep(NA_integer_, K_fit)
+  learned_to_true[best_learned_for_true] = seq_len(K_true)
+
+  nearest_true = apply(similarity, 1, which.max)
+  nearest_cosine = similarity[cbind(seq_len(K_fit), nearest_true)]
+
+  list(
+    match = data.frame(
+      true_factor = seq_len(K_true),
+      learned_factor = best_learned_for_true,
+      cosine = similarity[cbind(best_learned_for_true, seq_len(K_true))]
+    ),
+    learned_rows = data.frame(
+      learned_factor = seq_len(K_fit),
+      matched_true_factor = learned_to_true,
+      nearest_true_factor = nearest_true,
+      nearest_true_cosine = nearest_cosine
+    ),
+    learned_to_true = learned_to_true,
+    nearest_true = nearest_true
+  )
+}
+
+loading_scores = function(fit) {
+  E_beta = fit$alpha / fit$lambda
+  apply(fit$gamma_bar * E_beta, c(1, 3), sum)
+}
+
+assignment_scores = function(fit) {
+  apply(fit$gamma_bar, c(1, 3), sum)
+}
+
+posterior_inclusion_scores = function(fit) {
+  1 - apply(1 - fit$gamma_bar, c(1, 3), prod)
+}
+
+map_scores_to_true = function(scores, learned_to_true, K_true) {
+  out = matrix(0, nrow = nrow(scores), ncol = K_true)
+  for (k in seq_along(learned_to_true)) {
+    if (!is.na(learned_to_true[k])) {
+      out[, learned_to_true[k]] = out[, learned_to_true[k]] + scores[, k]
+    }
+  }
+  out
+}
+
+support_labels_from_scores = function(scores, support_sizes) {
+  vapply(seq_len(nrow(scores)), function(i) {
+    active = order(scores[i, ], decreasing = TRUE)[seq_len(support_sizes[i])]
+    paste(sort(active), collapse = &quot;,&quot;)
+  }, character(1))
+}
+
+normalized_entropy = function(scores) {
+  prob = scores / rowSums(scores)
+  entropy = -prob * log(prob)
+  entropy[is.nan(entropy)] = 0
+  mean(rowSums(entropy)) / log(ncol(scores))
+}
+
+plot_cosine_heatmap = function(cosine_mat, main) {
+  image(x = seq_len(ncol(cosine_mat)), y = seq_len(nrow(cosine_mat)),
+        z = t(cosine_mat), axes = FALSE, xlab = &quot;True factor&quot;,
+        ylab = &quot;Fitted factor&quot;, main = main, col = hcl.colors(100, &quot;YlOrRd&quot;))
+  axis(1, at = seq_len(ncol(cosine_mat)),
+       labels = paste0(&quot;true &quot;, seq_len(ncol(cosine_mat))))
+  axis(2, at = seq_len(nrow(cosine_mat)),
+       labels = paste0(&quot;fit &quot;, seq_len(nrow(cosine_mat))), las = 1)
+  for (k_fit in seq_len(nrow(cosine_mat))) {
+    for (k_true in seq_len(ncol(cosine_mat))) {
+      text(k_true, k_fit, sprintf(&quot;%.2f&quot;, cosine_mat[k_fit, k_true]),
+           cex = 0.75)
+    }
+  }
+  box()
+}
+
+plot_usage = function(loading_usage, assignment_usage, nearest_true) {
+  usage_mat = rbind(loading = loading_usage, assignment = assignment_usage)
+  barplot(usage_mat, beside = TRUE, names.arg = paste0(&quot;fit &quot;, seq_along(loading_usage)),
+          xlab = &quot;Fitted factor&quot;, ylab = &quot;Usage fraction&quot;,
+          main = &quot;Fitted factor usage&quot;, col = c(&quot;firebrick&quot;, &quot;gray50&quot;),
+          ylim = c(0, max(usage_mat) * 1.2))
+  legend(&quot;topright&quot;, legend = rownames(usage_mat),
+         fill = c(&quot;firebrick&quot;, &quot;gray50&quot;), bty = &quot;n&quot;)
+  mtext(paste(&quot;nearest true:&quot;, paste(nearest_true, collapse = &quot; &quot;)),
+        side = 1, line = 4, cex = 0.8)
+}
+
+plot_recovered_support = function(scores_true_space, main) {
+  support_size = true_support_size
+  recovered = matrix(0, nrow = K_true, ncol = N)
+  for (i in seq_len(N)) {
+    active = order(scores_true_space[i, ], decreasing = TRUE)[seq_len(support_size[i])]
+    recovered[active, i] = 1
+  }
+
+  image(x = seq_len(N), y = seq_len(K_true), z = t(recovered),
+        axes = FALSE, xlab = &quot;Sample&quot;, ylab = &quot;Recovered true factor&quot;,
+        main = main, col = c(&quot;white&quot;, &quot;firebrick&quot;))
+  axis(1, at = seq(n_per_group / 2, N, by = n_per_group),
+       labels = paste(&quot;G&quot;, 1:8))
+  axis(2, at = seq_len(K_true), labels = seq_len(K_true), las = 1)
+  abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
+         col = &quot;gray80&quot;, lty = 3)
+  box()
+}
+
+plot_recovered_support_fit = function(scores_fit_space, main) {
+  recovered = matrix(0, nrow = ncol(scores_fit_space), ncol = N)
+  for (i in seq_len(N)) {
+    active = order(scores_fit_space[i, ], decreasing = TRUE)[
+      seq_len(true_support_size[i])
+    ]
+    recovered[active, i] = 1
+  }
+
+  image(x = seq_len(N), y = seq_len(ncol(scores_fit_space)), z = t(recovered),
+        axes = FALSE, xlab = &quot;Sample&quot;, ylab = &quot;Recovered fitted factor&quot;,
+        main = main, col = c(&quot;white&quot;, &quot;firebrick&quot;))
+  axis(1, at = seq(n_per_group / 2, N, by = n_per_group),
+       labels = paste(&quot;G&quot;, 1:8))
+  axis(2, at = seq_len(ncol(scores_fit_space)),
+       labels = seq_len(ncol(scores_fit_space)), las = 1)
+  abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
+         col = &quot;gray80&quot;, lty = 3)
+  box()
+}
+
+conditional_scores = function(scores, factor_set, sample_idx) {
+  out = scores[sample_idx, factor_set, drop = FALSE]
+  out = out / rowSums(out)
+  out[is.nan(out)] = 0
+  out
+}
+
+row_normalized_entropy = function(prob) {
+  entropy = -prob * log(prob)
+  entropy[is.nan(entropy)] = 0
+  rowSums(entropy) / log(ncol(prob))
+}
+
+plot_competing_factor_shares = function(prob, sample_idx, factor_set, main) {
+  sample_group = grp[sample_idx]
+  group_run = rle(sample_group)
+  group_end = cumsum(group_run$lengths)
+  group_mid = group_end - group_run$lengths / 2
+
+  image(x = seq_along(sample_idx), y = seq_along(factor_set), z = prob,
+        axes = FALSE, xlab = &quot;Sample with target true factor active&quot;,
+        ylab = &quot;Competing fitted factor&quot;, main = main,
+        col = hcl.colors(100, &quot;YlOrRd&quot;))
+  axis(1, at = group_mid, labels = paste(&quot;G&quot;, group_run$values))
+  axis(2, at = seq_along(factor_set),
+       labels = paste0(&quot;fit &quot;, factor_set), las = 1)
+  if (length(group_end) &gt; 1) {
+    abline(v = group_end[-length(group_end)] + 0.5, col = &quot;gray80&quot;, lty = 3)
+  }
+  box()
+}
+
+plot_competing_entropy = function(entropy, sample_idx, main) {
+  boxplot(entropy ~ factor(grp[sample_idx]), xlab = &quot;Group&quot;,
+          ylab = &quot;Normalized entropy&quot;, main = main)
+}
+
+candidate_competing_factors = function(true_factor, top_n = 3) {
+  nearest_set = which(factor_match$nearest_true == true_factor)
+  top_set = order(cosine_fit_true[, true_factor], decreasing = TRUE)[
+    seq_len(min(top_n, nrow(cosine_fit_true)))
+  ]
+  sort(unique(c(nearest_set, top_set)))
+}
+
+competing_factor_diagnostics = function(true_factor, factor_set = NULL,
+                                        top_n = 3) {
+  if (is.null(factor_set)) {
+    factor_set = candidate_competing_factors(true_factor, top_n)
+  }
+  sample_idx = which(L[, true_factor] &gt; 0)
+
+  pip_share = conditional_scores(pip_scores, factor_set, sample_idx)
+  loading_share = conditional_scores(fit_loading_scores, factor_set, sample_idx)
+  pip_entropy = row_normalized_entropy(pip_share)
+  loading_entropy = row_normalized_entropy(loading_share)
+
+  list(
+    true_factor = true_factor,
+    factor_set = factor_set,
+    sample_idx = sample_idx,
+    pip_share = pip_share,
+    loading_share = loading_share,
+    pip_entropy = pip_entropy,
+    loading_entropy = loading_entropy,
+    summary = data.frame(
+      true_factor = true_factor,
+      candidate_fitted_factors = paste(factor_set, collapse = &quot;,&quot;),
+      n_samples_with_true_factor = length(sample_idx),
+      mean_candidate_cosine = mean(cosine_fit_true[factor_set, true_factor]),
+      max_candidate_cosine = max(cosine_fit_true[factor_set, true_factor]),
+      total_candidate_loading_usage = sum(loading_usage[factor_set]),
+      mean_pip_entropy = mean(pip_entropy),
+      median_pip_entropy = median(pip_entropy),
+      mean_top_pip_share = mean(apply(pip_share, 1, max)),
+      mean_loading_entropy = mean(loading_entropy),
+      median_loading_entropy = median(loading_entropy),
+      mean_top_loading_share = mean(apply(loading_share, 1, max))
+    )
+  )
+}
+
+plot_competing_diagnostics = function(diag, label) {
+  plot_competing_factor_shares(
+    diag$pip_share,
+    diag$sample_idx,
+    diag$factor_set,
+    paste(&quot;Conditional PIP share among candidate factors for&quot;, label)
+  )
+  plot_competing_factor_shares(
+    diag$loading_share,
+    diag$sample_idx,
+    diag$factor_set,
+    paste(&quot;Conditional loading share among candidate factors for&quot;, label)
+  )
+  plot_competing_entropy(
+    diag$pip_entropy,
+    diag$sample_idx,
+    paste(&quot;PIP uncertainty among candidate factors for&quot;, label)
+  )
+}
+
+true_support_size = rowSums(L &gt; 0)
+true_support_label = apply(L &gt; 0, 1, function(x) {
+  paste(which(x), collapse = &quot;,&quot;)
+})</code></pre>
+</div>
+<div id="fit-overspecified-k" class="section level2">
+<h2>Fit Overspecified K</h2>
+<pre class="r"><code>fit = mf_poi_susie(
+  Y = Y,
+  K = K_fit,
+  D = D,
+  max_iters = 100,
+  update_prior = TRUE,
+  break_symmetry = FALSE,
+  init_seed = 1,
+  init_F = &quot;poisson_nmf&quot;,
+  nmf_iters = 200,
+  init_gamma_from_nmf = TRUE,
+  gamma_step_init = 0.1,
+  gamma_step_ramp = 50,
+  F_step_init = 0.05,
+  F_step_ramp = 75,
+  elbo_every = 5,
+  tol = 5e-4,
+  min_iters = 20,
+  patience = 2
+)</code></pre>
+<pre class="r"><code>idx = fit$elbo_iter
+plot(idx, fit$elbo[idx], type = &quot;l&quot;, xlab = &quot;Iteration&quot;, ylab = &quot;ELBO&quot;,
+     main = &quot;Variational objective&quot;)
+points(idx, fit$elbo[idx], pch = 19, cex = 0.5)</code></pre>
+<p><img src="figure/overspecify-K-mf-poi-susie.Rmd/elbo-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>data.frame(
+  converged = fit$converged,
+  n_iter = fit$n_iter,
+  final_elbo = tail(fit$elbo[fit$elbo_iter], 1)
+)</code></pre>
+<pre><code>  converged n_iter final_elbo
+1      TRUE     40  -168567.6</code></pre>
+</div>
+<div id="factor-recovery" class="section level2">
+<h2>Factor Recovery</h2>
+<pre class="r"><code>factor_match = match_true_to_learned(fit$F, F0)
+
+factor_match$match</code></pre>
+<pre><code>  true_factor learned_factor    cosine
+1           1              4 0.9705946
+2           2              5 0.9647660
+3           3              1 0.9780176
+4           4              7 0.9780678
+5           5              6 0.9781375</code></pre>
+<pre class="r"><code>cosine_fit_true = row_cosine(fit$F, F0)
+plot_cosine_heatmap(
+  cosine_fit_true,
+  &quot;Cosine similarity between fitted and true factors&quot;
+)</code></pre>
+<p><img src="figure/overspecify-K-mf-poi-susie.Rmd/factor-cosine-heatmap-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>fit_loading_scores = loading_scores(fit)
+fit_assignment_scores = assignment_scores(fit)
+
+loading_usage = colSums(fit_loading_scores) / sum(fit_loading_scores)
+assignment_usage = colSums(fit_assignment_scores) / sum(fit_assignment_scores)
+
+learned_row_summary = transform(
+  factor_match$learned_rows,
+  loading_usage = loading_usage,
+  assignment_usage = assignment_usage
+)
+
+learned_row_summary[order(learned_row_summary$loading_usage, decreasing = TRUE), ]</code></pre>
+<pre><code>  learned_factor matched_true_factor nearest_true_factor nearest_true_cosine
+1              1                   3                   3           0.9780176
+5              5                   2                   2           0.9647660
+4              4                   1                   1           0.9705946
+6              6                   5                   5           0.9781375
+7              7                   4                   4           0.9780678
+3              3                  NA                   1           0.8140813
+2              2                  NA                   2           0.8327874
+  loading_usage assignment_usage
+1     0.1901225        0.1770744
+5     0.1804073        0.1683337
+4     0.1554943        0.1535049
+6     0.1318004        0.1404392
+7     0.1266470        0.1404088
+3     0.1149004        0.1060397
+2     0.1006282        0.1141992</code></pre>
+<pre class="r"><code>data.frame(
+  mean_true_match_cosine = mean(factor_match$match$cosine),
+  min_true_match_cosine = min(factor_match$match$cosine),
+  total_unmatched_loading_usage =
+    sum(loading_usage[is.na(factor_match$learned_to_true)]),
+  max_unmatched_loading_usage =
+    max(loading_usage[is.na(factor_match$learned_to_true)])
+)</code></pre>
+<pre><code>  mean_true_match_cosine min_true_match_cosine total_unmatched_loading_usage
+1              0.9739167              0.964766                     0.2155285
+  max_unmatched_loading_usage
+1                   0.1149004</code></pre>
+<pre class="r"><code>plot_usage(
+  loading_usage = loading_usage,
+  assignment_usage = assignment_usage,
+  nearest_true = factor_match$nearest_true
+)</code></pre>
+<p><img src="figure/overspecify-K-mf-poi-susie.Rmd/fitted-factor-usage-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>ord = order(loading_usage, decreasing = TRUE)
+matplot(t(fit$F[ord, 1:150]), type = &quot;l&quot;, lty = 1,
+        xlab = &quot;m&quot;, ylab = &quot;F[k, m]&quot;,
+        main = &quot;Learned factor rows ordered by usage&quot;)
+legend(&quot;topright&quot;, legend = paste0(&quot;learned &quot;, ord), col = seq_along(ord),
+       lty = 1, bty = &quot;n&quot;)</code></pre>
+<p><img src="figure/overspecify-K-mf-poi-susie.Rmd/learned-factor-shapes-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+</div>
+<div id="support-recovery" class="section level2">
+<h2>Support Recovery</h2>
+<p>Support recovery is evaluated after mapping learned factor rows to
+their nearest true factor. This gives a generous view of sparsity
+recovery even if the overspecified model splits one true factor across
+multiple learned rows.</p>
+<pre class="r"><code>scores_nearest_true = map_scores_to_true(
+  fit_loading_scores,
+  factor_match$nearest_true,
+  K_true
+)
+
+support_recovery = data.frame(
+  exact_support_accuracy = mean(
+    support_labels_from_scores(scores_nearest_true, true_support_size) ==
+      true_support_label
+  ),
+  mean_normalized_loading_entropy = normalized_entropy(scores_nearest_true)
+)
+
+support_recovery</code></pre>
+<pre><code>  exact_support_accuracy mean_normalized_loading_entropy
+1               0.974375                       0.2598542</code></pre>
+<p>The first plot below keeps all fitted factor rows, so extra factors
+appear explicitly if the overspecified fit uses them in the strongest
+posterior loading scores. The second plot collapses fitted rows to the
+nearest true factor. Thus, the all-fitted plot diagnoses factor
+splitting, whereas the collapsed plot asks whether the correct true
+support is still recovered after accounting for that splitting.</p>
+<pre class="r"><code>plot_recovered_support_fit(
+  fit_loading_scores,
+  &quot;Recovered supports over all fitted factors&quot;
+)</code></pre>
+<p><img src="figure/overspecify-K-mf-poi-susie.Rmd/recovered-fitted-factors-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_recovered_support(
+  scores_nearest_true,
+  &quot;Recovered supports with overspecified K&quot;
+)</code></pre>
+<p><img src="figure/overspecify-K-mf-poi-susie.Rmd/recovered-factors-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<p>The cosine heatmap and all-fitted support plot show that the extra
+factors are not simply unused. Some fitted rows compete to represent the
+same true factor. The collapsed support plot can still look accurate
+because those competing rows are mapped back to the same true
+factor.</p>
+</div>
+<div id="posterior-uncertainty-among-competing-factors"
+class="section level2">
+<h2>Posterior Uncertainty Among Competing Factors</h2>
+<p>SuSiE-style posterior uncertainty about factor identity is
+represented most directly by <code>gamma_bar</code>, or by posterior
+inclusion probabilities derived from <code>gamma_bar</code>. The
+auxiliary variables <code>xi</code> allocate observed counts across
+effects and features; they are useful for fitting, but they are not the
+most direct summary of uncertainty among highly correlated fitted factor
+rows.</p>
+<p>Here we identify true factors whose nearest fitted rows are
+duplicated. For the duplicated true factor with the largest fitted
+loading usage, we inspect how the posterior mass is split among its
+competing fitted rows.</p>
+<pre class="r"><code>pip_scores = posterior_inclusion_scores(fit)
+
+competing_sets = split(seq_len(K_fit), factor_match$nearest_true)
+competing_sets = competing_sets[vapply(competing_sets, length, integer(1)) &gt; 1]
+
+competing_summary = do.call(rbind, lapply(names(competing_sets), function(k0) {
+  factor_set = competing_sets[[k0]]
+  data.frame(
+    true_factor = as.integer(k0),
+    fitted_factors = paste(factor_set, collapse = &quot;,&quot;),
+    n_fitted_factors = length(factor_set),
+    mean_nearest_cosine =
+      mean(cosine_fit_true[factor_set, as.integer(k0)]),
+    total_loading_usage = sum(loading_usage[factor_set]),
+    total_assignment_usage = sum(assignment_usage[factor_set]),
+    row.names = NULL
+  )
+}))
+
+competing_summary[order(competing_summary$total_loading_usage,
+                        decreasing = TRUE), ]</code></pre>
+<pre><code>  true_factor fitted_factors n_fitted_factors mean_nearest_cosine
+2           2            2,5                2           0.8987767
+1           1            3,4                2           0.8923379
+  total_loading_usage total_assignment_usage
+2           0.2810355              0.2825329
+1           0.2703946              0.2595446</code></pre>
+<pre class="r"><code>selected_true_factor = competing_summary$true_factor[
+  which.max(competing_summary$total_loading_usage)
+]
+selected_fitted_factors = competing_sets[[as.character(selected_true_factor)]]
+selected_diag = competing_factor_diagnostics(
+  selected_true_factor,
+  factor_set = selected_fitted_factors
+)
+
+selected_diag$summary</code></pre>
+<pre><code>  true_factor candidate_fitted_factors n_samples_with_true_factor
+1           2                      2,5                        800
+  mean_candidate_cosine max_candidate_cosine total_candidate_loading_usage
+1             0.8987767             0.964766                     0.2810355
+  mean_pip_entropy median_pip_entropy mean_top_pip_share mean_loading_entropy
+1        0.2783911       4.987178e-08          0.8591629            0.1780858
+  median_loading_entropy mean_top_loading_share
+1           1.514546e-06              0.9296235</code></pre>
+<pre class="r"><code>plot_competing_factor_shares(
+  selected_diag$pip_share,
+  selected_diag$sample_idx,
+  selected_diag$factor_set,
+  paste(&quot;Conditional PIP share among competitors for true factor&quot;,
+        selected_true_factor)
+)</code></pre>
+<p><img src="figure/overspecify-K-mf-poi-susie.Rmd/competing-pip-heatmap-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_competing_factor_shares(
+  selected_diag$loading_share,
+  selected_diag$sample_idx,
+  selected_diag$factor_set,
+  paste(&quot;Conditional loading share among competitors for true factor&quot;,
+        selected_true_factor)
+)</code></pre>
+<p><img src="figure/overspecify-K-mf-poi-susie.Rmd/competing-loading-heatmap-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_competing_entropy(
+  selected_diag$pip_entropy,
+  selected_diag$sample_idx,
+  paste(&quot;PIP uncertainty among competitors for true factor&quot;,
+        selected_true_factor)
+)</code></pre>
+<p><img src="figure/overspecify-K-mf-poi-susie.Rmd/competing-entropy-by-group-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<p>High conditional entropy means that the posterior does not strongly
+distinguish between the competing fitted rows. Low entropy means one
+fitted row dominates. The PIP-share heatmap is the closest diagnostic to
+SuSiE’s usual uncertainty quantification; the loading-share heatmap
+additionally asks whether that uncertainty matters for reconstructed
+loading mass.</p>
+<div id="candidate-competitors-for-true-factors-3-and-4"
+class="section level3">
+<h3>Candidate Competitors For True Factors 3 And 4</h3>
+<p>The duplicated-nearest-factor rule is strict. We also inspect true
+factors 3 and 4 by taking the fitted rows whose factor shapes are most
+cosine-similar to each target true factor. This asks whether the weaker
+visually apparent competition corresponds to genuine posterior
+uncertainty or only to small shape similarity.</p>
+<pre class="r"><code>factor3_diag = competing_factor_diagnostics(3, top_n = 3)
+factor3_diag$summary</code></pre>
+<pre><code>  true_factor candidate_fitted_factors n_samples_with_true_factor
+1           3                    1,2,3                        600
+  mean_candidate_cosine max_candidate_cosine total_candidate_loading_usage
+1              0.501065            0.9780176                      0.405651
+  mean_pip_entropy median_pip_entropy mean_top_pip_share mean_loading_entropy
+1        0.4750635          0.6309298          0.7228117            0.2034281
+  median_loading_entropy mean_top_loading_share
+1            0.004004373              0.8800951</code></pre>
+<pre class="r"><code>old_par = par(mfrow = c(3, 1), mar = c(4.5, 4.5, 3, 1))
+plot_competing_diagnostics(factor3_diag, &quot;true factor 3&quot;)</code></pre>
+<p><img src="figure/overspecify-K-mf-poi-susie.Rmd/competing-factor-3-plots-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>par(old_par)</code></pre>
+<pre class="r"><code>factor4_diag = competing_factor_diagnostics(4, top_n = 3)
+factor4_diag$summary</code></pre>
+<pre><code>  true_factor candidate_fitted_factors n_samples_with_true_factor
+1           4                    3,4,7                        400
+  mean_candidate_cosine max_candidate_cosine total_candidate_loading_usage
+1             0.4171044            0.9780678                     0.3970417
+  mean_pip_entropy median_pip_entropy mean_top_pip_share mean_loading_entropy
+1        0.7394124           0.806149          0.5700989            0.3306178
+  median_loading_entropy mean_top_loading_share
+1              0.4079723              0.7999409</code></pre>
+<pre class="r"><code>old_par = par(mfrow = c(3, 1), mar = c(4.5, 4.5, 3, 1))
+plot_competing_diagnostics(factor4_diag, &quot;true factor 4&quot;)</code></pre>
+<p><img src="figure/overspecify-K-mf-poi-susie.Rmd/competing-factor-4-plots-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>par(old_par)</code></pre>
+<p>For these candidate sets, compare PIP entropy with loading entropy.
+If PIP entropy is elevated but loading entropy is low, the model is
+uncertain about which duplicate row receives the label, but the
+reconstructed loading mass is still concentrated. If both are elevated,
+the overfitted rows are materially splitting the signal.</p>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
+Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 4.5.2 (2025-10-31)
+Platform: aarch64-apple-darwin20
+Running under: macOS Tahoe 26.5.1
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/New_York
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+loaded via a namespace (and not attached):
+ [1] vctrs_0.7.1       cli_3.6.6         knitr_1.51        rlang_1.2.0      
+ [5] xfun_0.56         stringi_1.8.7     otel_0.2.0        promises_1.5.0   
+ [9] jsonlite_2.0.0    workflowr_1.7.2   glue_1.8.0        rprojroot_2.1.1  
+[13] git2r_0.36.2      htmltools_0.5.9   httpuv_1.6.17     sass_0.4.10      
+[17] rmarkdown_2.30    jquerylib_0.1.4   evaluate_1.0.5    tibble_3.3.1     
+[21] fastmap_1.2.0     yaml_2.3.12       lifecycle_1.0.5   stringr_1.6.0    
+[25] compiler_4.5.2    fs_2.1.0          Rcpp_1.1.1        pkgconfig_2.0.3  
+[29] rstudioapi_0.18.0 later_1.4.8       digest_0.6.39     R6_2.6.1         
+[33] pillar_1.11.1     magrittr_2.0.4    bslib_0.10.0      tools_4.5.2      
+[37] cachem_1.1.0     </code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+https://docs.mathjax.org/en/latest/web/configuration.html. This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

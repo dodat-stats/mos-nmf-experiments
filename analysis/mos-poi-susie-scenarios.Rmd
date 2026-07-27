@@ -1,0 +1,467 @@
+---
+title: "MoS Poisson SuSiE Scenario Tests"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 7, fig.height = 4)
+```
+
+This file tests the first hard-motif MoS-Poisson-SuSiE implementation on two
+simulation settings we have been using:
+
+1. the block support-pattern scenario with one-factor and three-factor groups;
+2. the harder tree scenario where no group occupies a single factor.
+
+For each scenario, the oracle-motif fit asks whether the MoS mixture layer can
+separate observations when the true factor matrix and submanifold motifs are
+available. The initialized fit runs MF-Poisson-SuSiE first, initializes motifs
+from posterior loading scores, and then fits the MoS layer.
+
+The motif initializer allows an effective submanifold dimension smaller than
+`D`: after clustering posterior loading scores, factors whose normalized center
+weight is below the threshold are omitted, and the selected factors are padded
+with repeats. This matters for singleton and two-factor groups.
+
+```{r source-code}
+source("code/mos-poi-susie.R")
+```
+
+## Helpers
+
+```{r helpers}
+row_cosine = function(A, B) {
+  A_norm = sqrt(rowSums(A^2))
+  B_norm = sqrt(rowSums(B^2))
+  (A %*% t(B)) / (A_norm %o% B_norm)
+}
+
+all_permutations = function(x) {
+  if (length(x) == 1) return(matrix(x, nrow = 1))
+  do.call(rbind, lapply(seq_along(x), function(i) {
+    cbind(x[i], all_permutations(x[-i]))
+  }))
+}
+
+match_factor_rows = function(F_hat, F_true) {
+  K = nrow(F_true)
+  similarity = row_cosine(F_hat, F_true)
+  perms = all_permutations(seq_len(K))
+  scores = apply(perms, 1, function(p) {
+    sum(similarity[cbind(seq_len(K), p)])
+  })
+  learned_to_true = perms[which.max(scores), ]
+
+  list(
+    table = data.frame(
+      learned_factor = seq_len(K),
+      matched_true_factor = learned_to_true,
+      cosine = similarity[cbind(seq_len(K), learned_to_true)]
+    ),
+    learned_to_true = learned_to_true,
+    similarity = similarity
+  )
+}
+
+pad_supports = function(supports, D) {
+  do.call(rbind, lapply(supports, function(support) {
+    rep(support, length.out = D)
+  }))
+}
+
+support_label = function(support) paste(sort(unique(support)), collapse = ",")
+
+simulate_support_scenario = function(N, M, K, group_supports, shape_vec,
+                                      factor_shape = 0.1,
+                                      factor_rate = 0.01, seed = 1) {
+  set.seed(seed)
+  S = length(group_supports)
+  n_per_group = N / S
+  grp = rep(seq_len(S), each = n_per_group)
+
+  F0 = matrix(rgamma(M * K, shape = factor_shape, rate = factor_rate),
+              nrow = K, ncol = M)
+  F0 = normalize_rows(F0)
+
+  L = matrix(0, nrow = N, ncol = K)
+  for (s in seq_len(S)) {
+    idx = which(grp == s)
+    support = group_supports[[s]]
+    L[idx, support] = matrix(
+      rgamma(length(idx) * length(support), shape = shape_vec[s], rate = 1),
+      nrow = length(idx),
+      ncol = length(support)
+    )
+  }
+
+  Y = matrix(rpois(N * M, L %*% F0), nrow = N, ncol = M)
+
+  list(
+    Y = Y,
+    F0 = F0,
+    L = L,
+    grp = grp,
+    group_supports = group_supports,
+    true_patterns = vapply(group_supports, support_label, character(1))
+  )
+}
+
+plot_responsibility_heatmap = function(omega, grp, main) {
+  N = nrow(omega)
+  S = ncol(omega)
+  n_groups = length(unique(grp))
+  n_per_group = N / n_groups
+
+  image(x = seq_len(N), y = seq_len(S), z = omega,
+        axes = FALSE, xlab = "Sample", ylab = "Submanifold",
+        main = main, col = hcl.colors(100, "YlOrRd"))
+  axis(1, at = seq(n_per_group / 2, N, by = n_per_group),
+       labels = paste("G", seq_len(n_groups)))
+  axis(2, at = seq_len(S), labels = seq_len(S), las = 1)
+  abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
+         col = "gray80", lty = 3)
+  box()
+}
+
+plot_group_responsibilities = function(omega, grp, main) {
+  group_resp = do.call(rbind, lapply(sort(unique(grp)), function(g) {
+    colMeans(omega[grp == g, , drop = FALSE])
+  }))
+
+  image(x = seq_len(ncol(group_resp)), y = seq_len(nrow(group_resp)),
+        z = t(group_resp), axes = FALSE, xlab = "Fitted submanifold",
+        ylab = "True group", main = main, col = hcl.colors(100, "YlOrRd"))
+  axis(1, at = seq_len(ncol(group_resp)),
+       labels = paste0("S", seq_len(ncol(group_resp))))
+  axis(2, at = seq_len(nrow(group_resp)),
+       labels = paste0("G", seq_len(nrow(group_resp))), las = 1)
+  for (g in seq_len(nrow(group_resp))) {
+    for (s in seq_len(ncol(group_resp))) {
+      text(s, g, sprintf("%.2f", group_resp[g, s]), cex = 0.65)
+    }
+  }
+  box()
+
+  invisible(group_resp)
+}
+
+plot_cosine_heatmap = function(similarity, main) {
+  image(x = seq_len(ncol(similarity)), y = seq_len(nrow(similarity)),
+        z = t(similarity), axes = FALSE, xlab = "True factor",
+        ylab = "Fitted factor", main = main, col = hcl.colors(100, "YlOrRd"))
+  axis(1, at = seq_len(ncol(similarity)),
+       labels = paste0("true ", seq_len(ncol(similarity))))
+  axis(2, at = seq_len(nrow(similarity)),
+       labels = paste0("fit ", seq_len(nrow(similarity))), las = 1)
+  for (i in seq_len(nrow(similarity))) {
+    for (j in seq_len(ncol(similarity))) {
+      text(j, i, sprintf("%.2f", similarity[i, j]), cex = 0.65)
+    }
+  }
+  box()
+}
+
+translate_motifs_to_true_space = function(motifs, learned_to_true) {
+  matrix(learned_to_true[motifs], nrow = nrow(motifs), ncol = ncol(motifs))
+}
+
+summarize_fit = function(fit, z_true) {
+  data.frame(
+    converged = fit$converged,
+    n_iter = fit$n_iter,
+    final_elbo = tail(fit$elbo[!is.na(fit$elbo)], 1),
+    cluster_accuracy = cluster_accuracy(fit$z_hat, z_true),
+    mean_max_responsibility = mean(apply(fit$omega, 1, max))
+  )
+}
+```
+
+## Scenario 1: Block Support Patterns
+
+```{r block-simulate}
+block_supports = list(
+  c(1),
+  c(2),
+  c(3),
+  c(4),
+  c(5),
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(2, 3, 5)
+)
+
+block = simulate_support_scenario(
+  N = 480,
+  M = 500,
+  K = 5,
+  group_supports = block_supports,
+  shape_vec = c(rep(10, 5), rep(20, 3)),
+  seed = 42
+)
+
+data.frame(
+  scenario = "block",
+  N = nrow(block$Y),
+  M = ncol(block$Y),
+  K = nrow(block$F0),
+  S = length(block_supports),
+  total_count = sum(block$Y),
+  nonzero_entries = sum(block$Y > 0)
+)
+```
+
+```{r block-patterns}
+data.frame(
+  group = seq_along(block_supports),
+  true_active_factors = block$true_patterns
+)
+```
+
+### Oracle Motifs
+
+```{r block-oracle-fit}
+block_D = 3
+block_motifs = pad_supports(block_supports, block_D)
+
+block_oracle = mos_poi_susie_fixed_motifs(
+  Y = block$Y,
+  F = block$F0,
+  motifs = block_motifs,
+  max_iters = 30,
+  n_inner = 6,
+  update_prior = TRUE,
+  tol = 1e-5,
+  min_iters = 5,
+  patience = 2
+)
+
+summarize_fit(block_oracle, block$grp)
+```
+
+```{r block-oracle-plots}
+plot_group_responsibilities(
+  block_oracle$omega,
+  block$grp,
+  "Block scenario: oracle motif responsibilities"
+)
+
+plot_responsibility_heatmap(
+  block_oracle$omega,
+  block$grp,
+  "Block scenario: oracle responsibilities by sample"
+)
+```
+
+### MF-Initialized Motifs
+
+```{r block-learned-fit}
+block_learned = mos_poi_susie(
+  Y = block$Y,
+  K = 5,
+  S = length(block_supports),
+  D = block_D,
+  max_iters = 20,
+  n_inner = 5,
+  mf_max_iters = 50,
+  mf_nmf_iters = 80,
+  init_seed = 1,
+  update_prior = TRUE,
+  update_F = FALSE,
+  update_motifs = FALSE,
+  tol = 1e-5,
+  min_iters = 5,
+  patience = 2
+)
+
+summarize_fit(block_learned, block$grp)
+```
+
+```{r block-learned-factor-match}
+block_match = match_factor_rows(block_learned$F, block$F0)
+block_match$table
+
+data.frame(
+  mean_cosine = mean(block_match$table$cosine),
+  min_cosine = min(block_match$table$cosine)
+)
+```
+
+```{r block-learned-motifs}
+block_motifs_true_space =
+  translate_motifs_to_true_space(block_learned$motifs,
+                                 block_match$learned_to_true)
+
+data.frame(
+  fitted_submanifold = seq_len(nrow(block_learned$motifs)),
+  motif_in_fitted_factor_space = apply(block_learned$motifs, 1, support_label),
+  motif_mapped_to_true_factor_space =
+    apply(block_motifs_true_space, 1, support_label)
+)
+```
+
+```{r block-learned-plots}
+plot_cosine_heatmap(
+  block_match$similarity,
+  "Block scenario: fitted and true factor cosine"
+)
+
+plot_group_responsibilities(
+  block_learned$omega,
+  block$grp,
+  "Block scenario: MF-initialized MoS responsibilities"
+)
+```
+
+## Scenario 2: Tree Support Patterns
+
+```{r tree-simulate}
+tree_supports = list(
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(1, 5, 6),
+  c(1, 5, 7),
+  c(1, 2),
+  c(1, 5)
+)
+
+tree = simulate_support_scenario(
+  N = 480,
+  M = 600,
+  K = 7,
+  group_supports = tree_supports,
+  shape_vec = rep(18, length(tree_supports)),
+  seed = 47
+)
+
+data.frame(
+  scenario = "tree",
+  N = nrow(tree$Y),
+  M = ncol(tree$Y),
+  K = nrow(tree$F0),
+  S = length(tree_supports),
+  total_count = sum(tree$Y),
+  nonzero_entries = sum(tree$Y > 0)
+)
+```
+
+```{r tree-patterns}
+data.frame(
+  group = seq_along(tree_supports),
+  true_active_factors = tree$true_patterns
+)
+```
+
+### Oracle Motifs
+
+```{r tree-oracle-fit}
+tree_D = 3
+tree_motifs = pad_supports(tree_supports, tree_D)
+
+tree_oracle = mos_poi_susie_fixed_motifs(
+  Y = tree$Y,
+  F = tree$F0,
+  motifs = tree_motifs,
+  max_iters = 30,
+  n_inner = 6,
+  update_prior = TRUE,
+  tol = 1e-5,
+  min_iters = 5,
+  patience = 2
+)
+
+summarize_fit(tree_oracle, tree$grp)
+```
+
+```{r tree-oracle-plots}
+plot_group_responsibilities(
+  tree_oracle$omega,
+  tree$grp,
+  "Tree scenario: oracle motif responsibilities"
+)
+
+plot_responsibility_heatmap(
+  tree_oracle$omega,
+  tree$grp,
+  "Tree scenario: oracle responsibilities by sample"
+)
+```
+
+### MF-Initialized Motifs
+
+```{r tree-learned-fit}
+tree_learned = mos_poi_susie(
+  Y = tree$Y,
+  K = 7,
+  S = length(tree_supports),
+  D = tree_D,
+  max_iters = 20,
+  n_inner = 5,
+  mf_max_iters = 60,
+  mf_nmf_iters = 100,
+  init_seed = 2,
+  update_prior = TRUE,
+  update_F = FALSE,
+  update_motifs = FALSE,
+  tol = 1e-5,
+  min_iters = 5,
+  patience = 2
+)
+
+summarize_fit(tree_learned, tree$grp)
+```
+
+```{r tree-learned-factor-match}
+tree_match = match_factor_rows(tree_learned$F, tree$F0)
+tree_match$table
+
+data.frame(
+  mean_cosine = mean(tree_match$table$cosine),
+  min_cosine = min(tree_match$table$cosine)
+)
+```
+
+```{r tree-learned-motifs}
+tree_motifs_true_space =
+  translate_motifs_to_true_space(tree_learned$motifs,
+                                 tree_match$learned_to_true)
+
+data.frame(
+  fitted_submanifold = seq_len(nrow(tree_learned$motifs)),
+  motif_in_fitted_factor_space = apply(tree_learned$motifs, 1, support_label),
+  motif_mapped_to_true_factor_space =
+    apply(tree_motifs_true_space, 1, support_label)
+)
+```
+
+```{r tree-learned-plots}
+plot_cosine_heatmap(
+  tree_match$similarity,
+  "Tree scenario: fitted and true factor cosine"
+)
+
+plot_group_responsibilities(
+  tree_learned$omega,
+  tree$grp,
+  "Tree scenario: MF-initialized MoS responsibilities"
+)
+```
+
+## Takeaways To Check
+
+The oracle-motif fits are sanity checks for the MoS layer: if they fail, the
+mixture/responsibility updates are wrong. The MF-initialized fits are more
+demanding. In the block scenario, the single-factor groups provide anchors, so
+the factor rows and motifs should be easier to initialize. In the tree scenario,
+the no-anchor structure can still inherit the factor-identifiability issue we
+saw in `tree-scenario.Rmd`; good clustering there would suggest the
+submanifold mixture can partially compensate for imperfect factor recovery.
+
+The remaining limitation is that motifs are frozen after initialization. The
+next version should replace hard initialized motifs with soft submanifold-level
+posterior motif probabilities and update them jointly with `F`.
