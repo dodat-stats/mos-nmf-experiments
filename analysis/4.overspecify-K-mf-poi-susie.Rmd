@@ -1,5 +1,5 @@
 ---
-title: "MF Poisson SuSiE With Overspecified K"
+title: "4. MF Poisson SuSiE With Overspecified K"
 site: workflowr::wflow_site
 output:
   workflowr::wflow_html:
@@ -18,6 +18,11 @@ This page stress-tests the MF-Poisson-SuSiE fit when the number of fitted
 factors is larger than the true number of factors. The main question is whether
 the fitted model still recovers the true factor rows and sparse supports, and
 whether the extra factor rows remain weakly used or become duplicates.
+
+This is the \(K\)-side analogue of the previous page. Overfitted \(D\) creates
+extra effect dimensions within an observation. Overfitted \(K\) creates extra
+candidate rows in the dictionary. If those rows duplicate a true factor,
+posterior uncertainty should appear as competition among fitted factor labels.
 
 ```{r source-code}
 source("code/joint-learn-susie-poi-F.R")
@@ -657,3 +662,12 @@ loading mass. High PIP entropy but low loading-share entropy means the posterior
 is uncertain about labels but the loading mass is mostly concentrated. High
 entropy in both summaries means the overfitted factors are genuinely splitting
 the loading signal.
+
+## Takeaways
+
+Overfitting \(K\) is not best diagnosed by global entropy of `gamma_bar`.
+Instead, the useful diagnostic is targeted uncertainty among fitted rows that
+are close to the same true factor. If several fitted rows have high cosine
+similarity to one true row, we should inspect conditional PIP shares and
+loading shares within that competing set. This separates harmless label
+ambiguity from a real split of the reconstructed loading mass.

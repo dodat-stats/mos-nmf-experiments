@@ -11,9 +11,9 @@
 
 
 
-<title>Home</title>
+<title>MoS-NMF Experiments</title>
 
-<script src="site_libs/header-attrs-2.30/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.29/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
@@ -257,11 +257,29 @@ $(document).ready(function () {
         <li>
   <a href="index.html">Home</a>
 </li>
-<li>
-  <a href="poisson-susie.html">Poisson SuSiE</a>
-</li>
-<li>
-  <a href="joint-learn-susie-poi-F.html">Joint Learn F</a>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    MF Poisson SuSiE
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="1.poisson-susie.html">1. Poisson SuSiE</a>
+    </li>
+    <li>
+      <a href="2.joint-learn-susie-poi-F.html">2. Joint learning of F</a>
+    </li>
+    <li>
+      <a href="3.overspecify-D-mf-poi-susie.html">3. Overspecified D</a>
+    </li>
+    <li>
+      <a href="4.overspecify-K-mf-poi-susie.html">4. Overspecified K</a>
+    </li>
+    <li>
+      <a href="5.tree-scenario.html">5. Tree scenario</a>
+    </li>
+  </ul>
 </li>
 <li>
   <a href="about.html">About</a>
@@ -287,16 +305,14 @@ $(document).ready(function () {
 
 
 
-<h1 class="title toc-ignore">Home</h1>
+<h1 class="title toc-ignore">MoS-NMF Experiments</h1>
 
 </div>
 
 
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
-<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
-workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span>
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span> workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span>
 </button>
 </p>
 <div id="workflowr-report" class="collapse">
@@ -305,9 +321,7 @@ aria-hidden="true"></span>
 <a data-toggle="tab" href="#summary">Summary</a>
 </li>
 <li>
-<a data-toggle="tab" href="#checks"> Checks <span
-class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> </a>
+<a data-toggle="tab" href="#checks"> Checks <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> </a>
 </li>
 <li>
 <a data-toggle="tab" href="#versions">Past versions</a>
@@ -316,27 +330,17 @@ aria-hidden="true"></span> </a>
 <div class="tab-content">
 <div id="summary" class="tab-pane fade in active">
 <p>
-<strong>Last updated:</strong> 2026-07-26
+<strong>Last updated:</strong> 2026-07-27
 </p>
 <p>
-<strong>Checks:</strong> <span
-class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 1
-<span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> 1
+<strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 1 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 1
 </p>
 <p>
-<strong>Knit directory:</strong> <code>mos-nmf-experiments/</code> <span
-class="glyphicon glyphicon-question-sign" aria-hidden="true"
-title="This is the local directory in which the code in this file was executed.">
-</span>
+<strong>Knit directory:</strong> <code>mos-nmf-experiments/</code> <span class="glyphicon glyphicon-question-sign" aria-hidden="true" title="This is the local directory in which the code in this file was executed."> </span>
 </p>
 <p>
-This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a>
-analysis was created with <a
-  href="https://github.com/workflowr/workflowr">workflowr</a> (version
-1.7.2). The <em>Checks</em> tab describes the reproducibility checks
-that were applied when the results were created. The <em>Past
-versions</em> tab lists the development history.
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a> analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version 1.7.1). The <em>Checks</em> tab describes the reproducibility checks that were applied when the results were created. The <em>Past versions</em> tab lists the development history.
 </p>
 <hr>
 </div>
@@ -345,94 +349,66 @@ versions</em> tab lists the development history.
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguncommittedchanges">
-<span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> <strong>R Markdown file:</strong> uncommitted
-changes </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguncommittedchanges"> <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> <strong>R Markdown file:</strong> uncommitted changes </a>
 </p>
 </div>
-<div id="strongRMarkdownfilestronguncommittedchanges"
-class="panel-collapse collapse">
+<div id="strongRMarkdownfilestronguncommittedchanges" class="panel-collapse collapse">
 <div class="panel-body">
-<p>The R Markdown file has unstaged changes. To know which version of
-the R Markdown file created these results, you’ll want to first commit
-it to the Git repo. If you’re still working on the analysis, you can
-ignore this warning. When you’re finished, you can run
-<code>wflow_publish</code> to commit the R Markdown file and build the
-HTML.</p>
+<p>The R Markdown file has unstaged changes. To know which version of the R Markdown file created these results, you’ll want to first commit it to the Git repo. If you’re still working on the analysis, you can ignore this warning. When you’re finished, you can run <code>wflow_publish</code> to commit the R Markdown file and build the HTML.</p>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstreef889e0dd4934d9caabb3f72e952c368655d48c21targetblankf889e0da">
-<span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>Repository version:</strong>
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/f889e0dd4934d9caabb3f72e952c368655d48c21" target="_blank">f889e0d</a>
-</a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstree5b765971ad9fc1633998a09e1fcb3af5b29c040dtargetblank5b76597a"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> <a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/5b765971ad9fc1633998a09e1fcb3af5b29c040d" target="_blank">5b76597</a> </a>
 </p>
 </div>
-<div
-id="strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstreef889e0dd4934d9caabb3f72e952c368655d48c21targetblankf889e0da"
-class="panel-collapse collapse">
+<div id="strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstree5b765971ad9fc1633998a09e1fcb3af5b29c040dtargetblank5b76597a" class="panel-collapse collapse">
 <div class="panel-body">
 <p>
-Great! You are using Git for version control. Tracking code development
-and connecting the code version to the results is critical for
-reproducibility.
+Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility.
 </p>
 <p>
-The results in this page were generated with repository version
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/f889e0dd4934d9caabb3f72e952c368655d48c21" target="_blank">f889e0d</a>.
-See the <em>Past versions</em> tab to see a history of the changes made
-to the R Markdown and HTML files.
+The results in this page were generated with repository version <a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/5b765971ad9fc1633998a09e1fcb3af5b29c040d" target="_blank">5b76597</a>. See the <em>Past versions</em> tab to see a history of the changes made to the R Markdown and HTML files.
 </p>
 <p>
-Note that you need to be careful to ensure that all relevant files for
-the analysis have been committed to Git prior to generating the results
-(you can use <code>wflow_publish</code> or
-<code>wflow_git_commit</code>). workflowr only checks the R Markdown
-file, but you know if there are other scripts or data files that it
-depends on. Below is the status of the Git repository when the results
-were generated:
+Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
 </p>
 <pre><code>
 Ignored files:
     Ignored:    .DS_Store
-    Ignored:    .RData
     Ignored:    .Rhistory
     Ignored:    .Rproj.user/
+    Ignored:    analysis/.DS_Store
 
 Untracked files:
-    Untracked:  analysis/overspecify-D-mf-poi-susie.Rmd
-    Untracked:  analysis/overspecify-K-mf-poi-susie.Rmd
-    Untracked:  tex/model-ideas.aux
-    Untracked:  tex/model-ideas.bbl
-    Untracked:  tex/model-ideas.blg
-    Untracked:  tex/model-ideas.brf
-    Untracked:  tex/model-ideas.log
-    Untracked:  tex/model-ideas.out
-    Untracked:  tex/model-ideas.pdf
-    Untracked:  tex/model-ideas.synctex.gz
-    Untracked:  tex/model-ideas.tex
-    Untracked:  tex/sparsity.bib
+    Untracked:  analysis/1.poisson-susie.Rmd
+    Untracked:  analysis/2.joint-learn-susie-poi-F.Rmd
+    Untracked:  analysis/3.overspecify-D-mf-poi-susie.Rmd
+    Untracked:  analysis/4.overspecify-K-mf-poi-susie.Rmd
+    Untracked:  analysis/5.tree-scenario.Rmd
+    Untracked:  tex/main.pdf
+    Untracked:  tex/main.tex
 
 Unstaged changes:
+    Modified:   .codex/project-memory.md
+    Modified:   analysis/_site.yml
     Modified:   analysis/index.Rmd
-    Modified:   analysis/joint-learn-susie-poi-F.Rmd
-    Modified:   code/joint-learn-susie-poi-F.R
-    Modified:   tex/mf-poi-susie.aux
-    Modified:   tex/mf-poi-susie.log
-    Modified:   tex/mf-poi-susie.pdf
-    Deleted:    tex/mf-poi-susie.synctex.gz
-    Modified:   tex/mf-poi-susie.tex
+    Deleted:    analysis/joint-learn-susie-poi-F.Rmd
+    Modified:   analysis/mos-nmf-overspecify-D.Rmd
+    Deleted:    analysis/overspecify-D-mf-poi-susie.Rmd
+    Deleted:    analysis/overspecify-K-mf-poi-susie.Rmd
+    Deleted:    analysis/poisson-susie.Rmd
+    Deleted:    analysis/tree-scenario.Rmd
+    Modified:   code/mos-nmf-benchmark-utils.R
+    Modified:   code/mos-nmf.R
+    Modified:   paper-roadmap.md
+    Deleted:    tex/model-ideas.tex
 
 </code></pre>
 <p>
-Note that any generated files, e.g. HTML, png, CSS, etc., are not
-included in this status report because it is ok for generated content to
-have uncommitted changes.
+Note that any generated files, e.g. HTML, png, CSS, etc., are not included in this status report because it is ok for generated content to have uncommitted changes.
 </p>
 </div>
 </div>
@@ -441,12 +417,9 @@ have uncommitted changes.
 <hr>
 </div>
 <div id="versions" class="tab-pane fade">
+
 <p>
-These are the previous versions of the repository in which changes were
-made to the R Markdown (<code>analysis/index.Rmd</code>) and HTML
-(<code>docs/index.html</code>) files. If you’ve configured a remote Git
-repository (see <code>?wflow_git_remote</code>), click on the hyperlinks
-in the table below to view the files as they were in that past version.
+These are the previous versions of the repository in which changes were made to the R Markdown (<code>analysis/index.Rmd</code>) and HTML (<code>docs/index.html</code>) files. If you’ve configured a remote Git repository (see <code>?wflow_git_remote</code>), click on the hyperlinks in the table below to view the files as they were in that past version.
 </p>
 <div class="table-responsive">
 <table class="table table-condensed table-hover">
@@ -470,6 +443,40 @@ Message
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/5b765971ad9fc1633998a09e1fcb3af5b29c040d/analysis/index.Rmd" target="_blank">5b76597</a>
+</td>
+<td>
+dodat-stats
+</td>
+<td>
+2026-07-27
+</td>
+<td>
+add
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+<a href="https://rawcdn.githack.com/dodat-stats/mos-nmf-experiments/5b765971ad9fc1633998a09e1fcb3af5b29c040d/docs/index.html" target="_blank">5b76597</a>
+</td>
+<td>
+dodat-stats
+</td>
+<td>
+2026-07-27
+</td>
+<td>
+add
+</td>
+</tr>
 <tr>
 <td>
 html
@@ -562,17 +569,20 @@ Start workflowr project.
 </div>
 </div>
 </div>
-<p>Documenting experiments with MoS-NMF (Mixture of Submanifold
-Non-negative Matrix Factorization).</p>
-<ul>
-<li><p><a href="poisson-susie.html">Poisson susie</a></p></li>
-<li><p><a href="joint-learn-susie-poi-F.html">susie poisson
-NMF</a></p></li>
-</ul>
+<p>This workflowr site records the experiments behind the MoS-NMF project. The current sequence starts from Poisson SuSiE, moves to matrix-factorization Poisson SuSiE, and then studies the model-selection behavior that motivates MoS-NMF.</p>
+<div id="main-sequence" class="section level2">
+<h2>Main sequence</h2>
+<ol style="list-style-type: decimal">
+<li><p><a href="1.poisson-susie.html">Poisson SuSiE</a>: a single-observation sparse Poisson decomposition with posterior uncertainty over factor assignments.</p></li>
+<li><p><a href="2.joint-learn-susie-poi-F.html">Joint learning of <span class="math inline">\(F\)</span></a>: MF-Poisson-SuSiE when the shared factor matrix is learned rather than fixed.</p></li>
+<li><p><a href="3.overspecify-D-mf-poi-susie.html">Overspecified <span class="math inline">\(D\)</span></a>: how MF-Poisson-SuSiE behaves when the fitted number of single-effect dimensions is larger than the true support size.</p></li>
+<li><p><a href="4.overspecify-K-mf-poi-susie.html">Overspecified <span class="math inline">\(K\)</span></a>: how overfitting the factor dictionary creates redundant or competing factor rows, and how posterior assignment probabilities reveal that ambiguity.</p></li>
+<li><p><a href="5.tree-scenario.html">Tree scenario</a>: a harder no-anchor setting where every group uses multiple factors and support recovery depends on shared co-occurrence structure.</p></li>
+</ol>
 </div>
-</div>
-</div>
-</div>
+<div id="project-question" class="section level2">
+<h2>Project question</h2>
+<p>The central question is whether posterior objects such as <span class="math inline">\(\bar\gamma_{idk}\)</span> and <span class="math inline">\(\bar\gamma_{sdk}\)</span> can do more than recover sparse supports: can they also diagnose model-selection uncertainty when <span class="math inline">\(K\)</span>, <span class="math inline">\(D\)</span>, or later <span class="math inline">\(S\)</span> is overfitted?</p>
 </div>
 
 

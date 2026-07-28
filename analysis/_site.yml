@@ -5,10 +5,18 @@ navbar:
   left:
   - text: Home
     href: index.html
-  - text: Poisson SuSiE
-    href: poisson-susie.html
-  - text: Joint Learn F
-    href: joint-learn-susie-poi-F.html
+  - text: MF Poisson SuSiE
+    menu:
+    - text: "1. Poisson SuSiE"
+      href: 1.poisson-susie.html
+    - text: "2. Joint learning of F"
+      href: 2.joint-learn-susie-poi-F.html
+    - text: "3. Overspecified D"
+      href: 3.overspecify-D-mf-poi-susie.html
+    - text: "4. Overspecified K"
+      href: 4.overspecify-K-mf-poi-susie.html
+    - text: "5. Tree scenario"
+      href: 5.tree-scenario.html
   - text: About
     href: about.html
   - text: License

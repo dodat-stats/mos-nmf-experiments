@@ -11,9 +11,9 @@
 
 
 
-<title>Poisson SuSiE</title>
+<title>1. Poisson SuSiE</title>
 
-<script src="site_libs/header-attrs-2.30/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.29/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
@@ -333,11 +333,29 @@ div.tocify {
         <li>
   <a href="index.html">Home</a>
 </li>
-<li>
-  <a href="poisson-susie.html">Poisson SuSiE</a>
-</li>
-<li>
-  <a href="joint-learn-susie-poi-F.html">Joint Learn F</a>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    MF Poisson SuSiE
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="1.poisson-susie.html">1. Poisson SuSiE</a>
+    </li>
+    <li>
+      <a href="2.joint-learn-susie-poi-F.html">2. Joint learning of F</a>
+    </li>
+    <li>
+      <a href="3.overspecify-D-mf-poi-susie.html">3. Overspecified D</a>
+    </li>
+    <li>
+      <a href="4.overspecify-K-mf-poi-susie.html">4. Overspecified K</a>
+    </li>
+    <li>
+      <a href="5.tree-scenario.html">5. Tree scenario</a>
+    </li>
+  </ul>
 </li>
 <li>
   <a href="about.html">About</a>
@@ -363,16 +381,14 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">Poisson SuSiE</h1>
+<h1 class="title toc-ignore">1. Poisson SuSiE</h1>
 
 </div>
 
 
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
-<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
-workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span>
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span> workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span>
 </button>
 </p>
 <div id="workflowr-report" class="collapse">
@@ -381,9 +397,7 @@ aria-hidden="true"></span>
 <a data-toggle="tab" href="#summary">Summary</a>
 </li>
 <li>
-<a data-toggle="tab" href="#checks"> Checks <span
-class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> </a>
+<a data-toggle="tab" href="#checks"> Checks <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> </a>
 </li>
 <li>
 <a data-toggle="tab" href="#versions">Past versions</a>
@@ -392,27 +406,17 @@ aria-hidden="true"></span> </a>
 <div class="tab-content">
 <div id="summary" class="tab-pane fade in active">
 <p>
-<strong>Last updated:</strong> 2026-06-29
+<strong>Last updated:</strong> 2026-07-27
 </p>
 <p>
-<strong>Checks:</strong> <span
-class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 6
-<span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> 1
+<strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 5 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 2
 </p>
 <p>
-<strong>Knit directory:</strong> <code>mos-nmf-experiments/</code> <span
-class="glyphicon glyphicon-question-sign" aria-hidden="true"
-title="This is the local directory in which the code in this file was executed.">
-</span>
+<strong>Knit directory:</strong> <code>mos-nmf-experiments/</code> <span class="glyphicon glyphicon-question-sign" aria-hidden="true" title="This is the local directory in which the code in this file was executed."> </span>
 </p>
 <p>
-This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a>
-analysis was created with <a
-  href="https://github.com/workflowr/workflowr">workflowr</a> (version
-1.7.2). The <em>Checks</em> tab describes the reproducibility checks
-that were applied when the results were created. The <em>Past
-versions</em> tab lists the development history.
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a> analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version 1.7.1). The <em>Checks</em> tab describes the reproducibility checks that were applied when the results were created. The <em>Past versions</em> tab lists the development history.
 </p>
 <hr>
 </div>
@@ -421,166 +425,159 @@ versions</em> tab lists the development history.
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguncommittedchanges">
-<span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> <strong>R Markdown file:</strong> uncommitted
-changes </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguncommittedchanges"> <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> <strong>R Markdown file:</strong> uncommitted changes </a>
 </p>
 </div>
-<div id="strongRMarkdownfilestronguncommittedchanges"
-class="panel-collapse collapse">
+<div id="strongRMarkdownfilestronguncommittedchanges" class="panel-collapse collapse">
 <div class="panel-body">
-<p>The R Markdown file has unstaged changes. To know which version of
-the R Markdown file created these results, you’ll want to first commit
-it to the Git repo. If you’re still working on the analysis, you can
-ignore this warning. When you’re finished, you can run
-<code>wflow_publish</code> to commit the R Markdown file and build the
-HTML.</p>
+<p>The R Markdown is untracked by Git. To know which version of the R Markdown file created these results, you’ll want to first commit it to the Git repo. If you’re still working on the analysis, you can ignore this warning. When you’re finished, you can run <code>wflow_publish</code> to commit the R Markdown file and build the HTML.</p>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty">
-<span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongobjectspresent"> <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> <strong>Environment:</strong> objects present </a>
 </p>
 </div>
-<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div id="strongEnvironmentstrongobjectspresent" class="panel-collapse collapse">
 <div class="panel-body">
-<p>Great job! The global environment was empty. Objects defined in the
-global environment can affect the analysis in your R Markdown file in
-unknown ways. For reproduciblity it’s best to always run the code in an
-empty environment.</p>
+<p>
+The global environment had objects present when the code in the R Markdown file was run. These objects can affect the analysis in your R Markdown file in unknown ways. For reproduciblity it’s best to always run the code in an empty environment. Use <code>wflow_publish</code> or <code>wflow_build</code> to ensure that the code is always run in an empty environment.
+</p>
+<p>
+The following objects were defined in the global environment when these results were created:
+</p>
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th style="text-align:left;">
+Name
+</th>
+<th style="text-align:left;">
+Class
+</th>
+<th style="text-align:left;">
+Size
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+rstudio_pandoc
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+232 bytes
+</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20260624code">
-<span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>Seed:</strong>
-<code>set.seed(20260624)</code> </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20260624code"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Seed:</strong> <code>set.seed(20260624)</code> </a>
 </p>
 </div>
-<div id="strongSeedstrongcodesetseed20260624code"
-class="panel-collapse collapse">
+<div id="strongSeedstrongcodesetseed20260624code" class="panel-collapse collapse">
 <div class="panel-body">
-<p>The command <code>set.seed(20260624)</code> was run prior to running
-the code in the R Markdown file. Setting a seed ensures that any results
-that rely on randomness, e.g. subsampling or permutations, are
-reproducible.</p>
+<p>The command <code>set.seed(20260624)</code> was run prior to running the code in the R Markdown file. Setting a seed ensures that any results that rely on randomness, e.g. subsampling or permutations, are reproducible.</p>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded">
-<span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>Session information:</strong>
-recorded </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Session information:</strong> recorded </a>
 </p>
 </div>
-<div id="strongSessioninformationstrongrecorded"
-class="panel-collapse collapse">
+<div id="strongSessioninformationstrongrecorded" class="panel-collapse collapse">
 <div class="panel-body">
-<p>Great job! Recording the operating system, R version, and package
-versions is critical for reproducibility.</p>
+<p>Great job! Recording the operating system, R version, and package versions is critical for reproducibility.</p>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone">
-<span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Cache:</strong> none </a>
 </p>
 </div>
 <div id="strongCachestrongnone" class="panel-collapse collapse">
 <div class="panel-body">
-<p>Nice! There were no cached chunks for this analysis, so you can be
-confident that you successfully produced the results during this
-run.</p>
+<p>Nice! There were no cached chunks for this analysis, so you can be confident that you successfully produced the results during this run.</p>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative">
-<span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
 </p>
 </div>
 <div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
 <div class="panel-body">
-<p>Great job! Using relative paths to the files within your workflowr
-project makes it easier to run your code on other machines.</p>
+<p>Great job! Using relative paths to the files within your workflowr project makes it easier to run your code on other machines.</p>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstree979a7ec194548f26a8d8c62c6e6eaeceefc90130targetblank979a7eca">
-<span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>Repository version:</strong>
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/979a7ec194548f26a8d8c62c6e6eaeceefc90130" target="_blank">979a7ec</a>
-</a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstree5b765971ad9fc1633998a09e1fcb3af5b29c040dtargetblank5b76597a"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> <a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/5b765971ad9fc1633998a09e1fcb3af5b29c040d" target="_blank">5b76597</a> </a>
 </p>
 </div>
-<div
-id="strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstree979a7ec194548f26a8d8c62c6e6eaeceefc90130targetblank979a7eca"
-class="panel-collapse collapse">
+<div id="strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstree5b765971ad9fc1633998a09e1fcb3af5b29c040dtargetblank5b76597a" class="panel-collapse collapse">
 <div class="panel-body">
 <p>
-Great! You are using Git for version control. Tracking code development
-and connecting the code version to the results is critical for
-reproducibility.
+Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility.
 </p>
 <p>
-The results in this page were generated with repository version
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/979a7ec194548f26a8d8c62c6e6eaeceefc90130" target="_blank">979a7ec</a>.
-See the <em>Past versions</em> tab to see a history of the changes made
-to the R Markdown and HTML files.
+The results in this page were generated with repository version <a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/5b765971ad9fc1633998a09e1fcb3af5b29c040d" target="_blank">5b76597</a>. See the <em>Past versions</em> tab to see a history of the changes made to the R Markdown and HTML files.
 </p>
 <p>
-Note that you need to be careful to ensure that all relevant files for
-the analysis have been committed to Git prior to generating the results
-(you can use <code>wflow_publish</code> or
-<code>wflow_git_commit</code>). workflowr only checks the R Markdown
-file, but you know if there are other scripts or data files that it
-depends on. Below is the status of the Git repository when the results
-were generated:
+Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
 </p>
 <pre><code>
 Ignored files:
     Ignored:    .DS_Store
-    Ignored:    .RData
     Ignored:    .Rhistory
     Ignored:    .Rproj.user/
+    Ignored:    analysis/.DS_Store
 
 Untracked files:
-    Untracked:  code/joint-learn-susie-poi-F.R
-    Untracked:  code/mf-poi-susie.R
-    Untracked:  code/mv-poi-susie.R
-    Untracked:  code/poisson-susie.R
-    Untracked:  code/utils.R
-    Untracked:  tex/
+    Untracked:  analysis/1.poisson-susie.Rmd
+    Untracked:  analysis/2.joint-learn-susie-poi-F.Rmd
+    Untracked:  analysis/3.overspecify-D-mf-poi-susie.Rmd
+    Untracked:  analysis/4.overspecify-K-mf-poi-susie.Rmd
+    Untracked:  analysis/5.tree-scenario.Rmd
+    Untracked:  tex/main.pdf
+    Untracked:  tex/main.tex
 
 Unstaged changes:
-    Modified:   .Rprofile
-    Modified:   analysis/poisson-susie.Rmd
+    Modified:   .codex/project-memory.md
+    Modified:   analysis/_site.yml
+    Modified:   analysis/index.Rmd
+    Deleted:    analysis/joint-learn-susie-poi-F.Rmd
+    Modified:   analysis/mos-nmf-overspecify-D.Rmd
+    Deleted:    analysis/overspecify-D-mf-poi-susie.Rmd
+    Deleted:    analysis/overspecify-K-mf-poi-susie.Rmd
+    Deleted:    analysis/poisson-susie.Rmd
+    Deleted:    analysis/tree-scenario.Rmd
+    Modified:   code/mos-nmf-benchmark-utils.R
+    Modified:   code/mos-nmf.R
+    Modified:   paper-roadmap.md
+    Deleted:    tex/model-ideas.tex
 
 </code></pre>
 <p>
-Note that any generated files, e.g. HTML, png, CSS, etc., are not
-included in this status report because it is ok for generated content to
-have uncommitted changes.
+Note that any generated files, e.g. HTML, png, CSS, etc., are not included in this status report because it is ok for generated content to have uncommitted changes.
 </p>
 </div>
 </div>
@@ -590,105 +587,28 @@ have uncommitted changes.
 </div>
 <div id="versions" class="tab-pane fade">
 <p>
-These are the previous versions of the repository in which changes were
-made to the R Markdown (<code>analysis/poisson-susie.Rmd</code>) and
-HTML (<code>docs/poisson-susie.html</code>) files. If you’ve configured
-a remote Git repository (see <code>?wflow_git_remote</code>), click on
-the hyperlinks in the table below to view the files as they were in that
-past version.
+There are no past versions. Publish this analysis with <code>wflow_publish()</code> to start tracking its development.
 </p>
-<div class="table-responsive">
-<table class="table table-condensed table-hover">
-<thead>
-<tr>
-<th>
-File
-</th>
-<th>
-Version
-</th>
-<th>
-Author
-</th>
-<th>
-Date
-</th>
-<th>
-Message
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-html
-</td>
-<td>
-<a href="https://rawcdn.githack.com/dodat-stats/mos-nmf-experiments/3f3c951dc50c9577266137ef87a2fb48e04c0f05/docs/poisson-susie.html" target="_blank">3f3c951</a>
-</td>
-<td>
-dodat-stats
-</td>
-<td>
-2026-06-24
-</td>
-<td>
-Build site.
-</td>
-</tr>
-<tr>
-<td>
-Rmd
-</td>
-<td>
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/0cc18f4a70cfa90c855d9fec9221829ed8815cc9/analysis/poisson-susie.Rmd" target="_blank">0cc18f4</a>
-</td>
-<td>
-dodat-stats
-</td>
-<td>
-2026-06-24
-</td>
-<td>
-poisson susie
-</td>
-</tr>
-</tbody>
-</table>
-</div>
 <hr>
 </div>
 </div>
 </div>
-<p>This page demonstrates the single-observation Poisson SuSiE algorithm
-implemented in <code>code/poisson-susie.R</code>.</p>
+<p>This page is the starting point for the project. It demonstrates the single-observation Poisson SuSiE algorithm implemented in <code>code/poisson-susie.R</code>.</p>
+<p>The experiment has two goals. First, it checks whether a sparse Poisson single-effect decomposition can recover the active factor rows. Second, it uses an exactly duplicated factor row to test whether the posterior over <span class="math inline">\(\gamma\)</span> represents non-identifiability as uncertainty rather than forcing an arbitrary hard choice.</p>
 <pre class="r"><code>source(&quot;code/poisson-susie.R&quot;)</code></pre>
 <div id="model" class="section level2">
 <h2>Model</h2>
-<p>For a count vector <span class="math inline">\(y =
-(y_1,\ldots,y_M)\)</span> and a known nonnegative dictionary <span
-class="math inline">\(F \in \mathbb{R}_+^{K \times M}\)</span>, <span
-class="math display">\[
-  y_m \sim \mathrm{Poisson}\left(\sum_{d=1}^D \beta_d F_{\gamma_d
-m}\right),
+<p>For a count vector <span class="math inline">\(y = (y_1,\ldots,y_M)\)</span> and a known nonnegative dictionary <span class="math inline">\(F \in \mathbb{R}_+^{K \times M}\)</span>, <span class="math display">\[
+  y_m \sim \mathrm{Poisson}\left(\sum_{d=1}^D \beta_d F_{\gamma_d m}\right),
   \qquad
   \gamma_d \sim \mathrm{Categorical}(1/K,\ldots,1/K),
   \qquad
   \beta_d \mid \gamma_d \sim \mathrm{Gamma}(\alpha_d^0,\lambda_d^0).
-\]</span> The variational posterior assigns each effect <span
-class="math inline">\(d\)</span> a categorical distribution over the
-rows of <span class="math inline">\(F\)</span>, stored as
-<code>gamma_bar[d, k]</code>.</p>
+\]</span> The variational posterior assigns each effect <span class="math inline">\(d\)</span> a categorical distribution over the rows of <span class="math inline">\(F\)</span>, stored as <code>gamma_bar[d, k]</code>.</p>
 </div>
 <div id="simulate-data" class="section level2">
 <h2>Simulate Data</h2>
-<p>We simulate <span class="math inline">\(K = 11\)</span> candidate
-factors and generate one count vector from three active factors. The
-11-th row of <span class="math inline">\(F\)</span> is an exact copy of
-the first row, so factors 1 and 11 are statistically indistinguishable.
-This gives a simple check that the posterior over <span
-class="math inline">\(\gamma\)</span> quantifies assignment
-uncertainty.</p>
+<p>We simulate <span class="math inline">\(K = 11\)</span> candidate factors and generate one count vector from three active factors. The 11-th row of <span class="math inline">\(F\)</span> is an exact copy of the first row, so factors 1 and 11 are statistically indistinguishable. This gives a simple check that the posterior over <span class="math inline">\(\gamma\)</span> quantifies assignment uncertainty.</p>
 <pre class="r"><code>set.seed(5)
 
 M = 2000
@@ -721,44 +641,7 @@ matplot(t(F[plot_rows, 1:150]), type = &quot;l&quot;, lty = 1,
 legend(&quot;topright&quot;, legend = paste(&quot;factor&quot;, plot_rows),
        col = seq_along(plot_rows), lty = 1,
        bty = &quot;n&quot;)</code></pre>
-<p><img src="figure/poisson-susie.Rmd/factor-shapes-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
-<p>
-<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-factor-shapes-1">
-Past versions of factor-shapes-1.png
-</button>
-</p>
-<div id="fig-factor-shapes-1" class="collapse">
-<div class="table-responsive">
-<table class="table table-condensed table-hover">
-<thead>
-<tr>
-<th>
-Version
-</th>
-<th>
-Author
-</th>
-<th>
-Date
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/3f3c951dc50c9577266137ef87a2fb48e04c0f05/docs/figure/poisson-susie.Rmd/factor-shapes-1.png" target="_blank">3f3c951</a>
-</td>
-<td>
-dodat-stats
-</td>
-<td>
-2026-06-24
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
+<p><img src="figure/1.poisson-susie.Rmd/factor-shapes-1.png" width="672" style="display: block; margin: auto;" /></p>
 </div>
 <div id="fit" class="section level2">
 <h2>Fit</h2>
@@ -777,51 +660,11 @@ fit = poi_susie(
 )</code></pre>
 <pre class="r"><code>plot(fit$elbo, type = &quot;l&quot;, xlab = &quot;Iteration&quot;, ylab = &quot;ELBO&quot;,
      main = &quot;Variational objective&quot;)</code></pre>
-<p><img src="figure/poisson-susie.Rmd/elbo-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
-<p>
-<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-elbo-1">
-Past versions of elbo-1.png
-</button>
-</p>
-<div id="fig-elbo-1" class="collapse">
-<div class="table-responsive">
-<table class="table table-condensed table-hover">
-<thead>
-<tr>
-<th>
-Version
-</th>
-<th>
-Author
-</th>
-<th>
-Date
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/3f3c951dc50c9577266137ef87a2fb48e04c0f05/docs/figure/poisson-susie.Rmd/elbo-1.png" target="_blank">3f3c951</a>
-</td>
-<td>
-dodat-stats
-</td>
-<td>
-2026-06-24
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
+<p><img src="figure/1.poisson-susie.Rmd/elbo-1.png" width="672" style="display: block; margin: auto;" /></p>
 </div>
 <div id="recovery" class="section level2">
 <h2>Recovery</h2>
-<p>Rows of <code>gamma_bar</code> correspond to the <span
-class="math inline">\(D\)</span> single effects, and columns correspond
-to candidate factors. The true active factors are 1, 2, and 3, but
-factors 1 and 11 are identical dictionary rows.</p>
+<p>Rows of <code>gamma_bar</code> correspond to the <span class="math inline">\(D\)</span> single effects, and columns correspond to candidate factors. The true active factors are 1, 2, and 3, but factors 1 and 11 are identical dictionary rows.</p>
 <pre class="r"><code>round(fit$gamma_bar, 3)</code></pre>
 <pre><code>     [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10] [,11]
 [1,]  0.0    0    1    0    0    0    0    0    0     0   0.0
@@ -829,12 +672,7 @@ factors 1 and 11 are identical dictionary rows.</p>
 [3,]  0.5    0    0    0    0    0    0    0    0     0   0.5
 [4,]  0.5    0    0    0    0    0    0    0    0     0   0.5
 [5,]  0.0    1    0    0    0    0    0    0    0     0   0.0</code></pre>
-<p>Because rows 1 and 11 of <span class="math inline">\(F\)</span> are
-identical, the likelihood cannot distinguish <span
-class="math inline">\(\gamma_d = 1\)</span> from <span
-class="math inline">\(\gamma_d = 11\)</span>. The posterior mass
-assigned to these two labels therefore shows the uncertainty induced by
-non-identifiability.</p>
+<p>Because rows 1 and 11 of <span class="math inline">\(F\)</span> are identical, the likelihood cannot distinguish <span class="math inline">\(\gamma_d = 1\)</span> from <span class="math inline">\(\gamma_d = 11\)</span>. The posterior mass assigned to these two labels therefore shows the uncertainty induced by non-identifiability.</p>
 <pre class="r"><code>data.frame(
   effect = seq_len(D),
   gamma_1 = round(fit$gamma_bar[, 1], 3),
@@ -869,57 +707,13 @@ image(t(fit$gamma_bar[D:1, ]), axes = FALSE, xlab = &quot;Factor&quot;, ylab = &
 axis(1, at = seq(0, 1, length.out = K), labels = seq_len(K))
 axis(2, at = seq(0, 1, length.out = D), labels = D:1)
 box()</code></pre>
-<p><img src="figure/poisson-susie.Rmd/gamma-heatmap-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
-<p>
-<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-gamma-heatmap-1">
-Past versions of gamma-heatmap-1.png
-</button>
-</p>
-<div id="fig-gamma-heatmap-1" class="collapse">
-<div class="table-responsive">
-<table class="table table-condensed table-hover">
-<thead>
-<tr>
-<th>
-Version
-</th>
-<th>
-Author
-</th>
-<th>
-Date
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/3f3c951dc50c9577266137ef87a2fb48e04c0f05/docs/figure/poisson-susie.Rmd/gamma-heatmap-1.png" target="_blank">3f3c951</a>
-</td>
-<td>
-dodat-stats
-</td>
-<td>
-2026-06-24
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
+<p><img src="figure/1.poisson-susie.Rmd/gamma-heatmap-1.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>par(op)</code></pre>
-<p>The algorithm recovers the active factors up to permutation of the
-<span class="math inline">\(D\)</span> effects. Extra effects can remain
-diffuse or attach weakly depending on initialization and the learned
-prior scale.</p>
+<p>The algorithm recovers the active factors up to permutation of the <span class="math inline">\(D\)</span> effects. Extra effects can remain diffuse or attach weakly depending on initialization and the learned prior scale.</p>
 </div>
 <div id="fit-with-symmetry-breaking" class="section level2">
 <h2>Fit With Symmetry Breaking</h2>
-<p>The <code>break_symmetry</code> option checks whether two active
-effects have nearly the same posterior assignment vector. If they do,
-one effect is averaged with the other and the duplicate is reset to the
-uniform distribution. This is intended to discourage two effects from
-explaining the same factor.</p>
+<p>The <code>break_symmetry</code> option checks whether two active effects have nearly the same posterior assignment vector. If they do, one effect is averaged with the other and the duplicate is reset to the uniform distribution. This is intended to discourage two effects from explaining the same factor.</p>
 <pre class="r"><code>fit_break = poi_susie(
   y = y,
   F = F,
@@ -937,44 +731,7 @@ lines(fit_break$elbo, col = &quot;red&quot;, lwd = 2)
 legend(&quot;bottomright&quot;, legend = c(&quot;break_symmetry = FALSE&quot;,
                                  &quot;break_symmetry = TRUE&quot;),
        col = c(&quot;black&quot;, &quot;red&quot;), lwd = 2, bty = &quot;n&quot;)</code></pre>
-<p><img src="figure/poisson-susie.Rmd/compare-elbo-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
-<p>
-<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-compare-elbo-1">
-Past versions of compare-elbo-1.png
-</button>
-</p>
-<div id="fig-compare-elbo-1" class="collapse">
-<div class="table-responsive">
-<table class="table table-condensed table-hover">
-<thead>
-<tr>
-<th>
-Version
-</th>
-<th>
-Author
-</th>
-<th>
-Date
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/3f3c951dc50c9577266137ef87a2fb48e04c0f05/docs/figure/poisson-susie.Rmd/compare-elbo-1.png" target="_blank">3f3c951</a>
-</td>
-<td>
-dodat-stats
-</td>
-<td>
-2026-06-24
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
+<p><img src="figure/1.poisson-susie.Rmd/compare-elbo-1.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>round(fit_break$gamma_bar, 3)</code></pre>
 <pre><code>      [,1]  [,2]  [,3]  [,4]  [,5]  [,6]  [,7]  [,8]  [,9] [,10] [,11]
 [1,] 0.000 0.000 1.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000
@@ -1012,69 +769,28 @@ image(t(fit_break$gamma_bar[D:1, ]), axes = FALSE,
 axis(1, at = seq(0, 1, length.out = K), labels = seq_len(K))
 axis(2, at = seq(0, 1, length.out = D), labels = D:1)
 box()</code></pre>
-<p><img src="figure/poisson-susie.Rmd/compare-gamma-heatmaps-1.png" alt="" width="864" style="display: block; margin: auto;" /></p>
-<p>
-<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-compare-gamma-heatmaps-1">
-Past versions of compare-gamma-heatmaps-1.png
-</button>
-</p>
-<div id="fig-compare-gamma-heatmaps-1" class="collapse">
-<div class="table-responsive">
-<table class="table table-condensed table-hover">
-<thead>
-<tr>
-<th>
-Version
-</th>
-<th>
-Author
-</th>
-<th>
-Date
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/3f3c951dc50c9577266137ef87a2fb48e04c0f05/docs/figure/poisson-susie.Rmd/compare-gamma-heatmaps-1.png" target="_blank">3f3c951</a>
-</td>
-<td>
-dodat-stats
-</td>
-<td>
-2026-06-24
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
+<p><img src="figure/1.poisson-susie.Rmd/compare-gamma-heatmaps-1.png" width="864" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>par(op)</code></pre>
-<p>With this seed, symmetry breaking keeps effects from collapsing onto
-identical posterior assignment vectors. The active factors are still
-recovered up to permutation, but the extra effects are more likely to be
-reset toward diffuse assignments instead of duplicating an
-already-explained factor. This can make the interpretation cleaner when
-<span class="math inline">\(D\)</span> is larger than the true number of
-active components, although the reset step can also introduce small ELBO
-jumps because it perturbs the current coordinate-ascent solution.</p>
+<p>With this seed, symmetry breaking keeps effects from collapsing onto identical posterior assignment vectors. The active factors are still recovered up to permutation, but the extra effects are more likely to be reset toward diffuse assignments instead of duplicating an already-explained factor. This can make the interpretation cleaner when <span class="math inline">\(D\)</span> is larger than the true number of active components, although the reset step can also introduce small ELBO jumps because it perturbs the current coordinate-ascent solution.</p>
+</div>
+<div id="takeaways" class="section level2">
+<h2>Takeaways</h2>
+<p>This first experiment establishes the basic role of <code>gamma_bar</code>: conditional on a dictionary <span class="math inline">\(F\)</span>, it is a posterior distribution over which factor explains each single effect. When two factor rows are identical, the posterior should split mass across those labels. When <span class="math inline">\(D\)</span> is larger than needed, symmetry breaking can prevent repeated effects from explaining the same signal, but it should be treated as an algorithmic stabilization device rather than a fully principled model-selection step.</p>
 <br>
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
-<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
-Session information
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span> Session information
 </button>
 </p>
 <div id="workflowr-sessioninfo" class="collapse">
 <pre class="r"><code>sessionInfo()</code></pre>
-<pre><code>R version 4.5.2 (2025-10-31)
-Platform: aarch64-apple-darwin20
-Running under: macOS Tahoe 26.5.1
+<pre><code>R version 4.3.2 (2023-10-31)
+Platform: aarch64-apple-darwin20 (64-bit)
+Running under: macOS 26.5.1
 
 Matrix products: default
 BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
-LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+LAPACK: /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.11.0
 
 locale:
 [1] C.UTF-8/C.UTF-8/C.UTF-8/C/C.UTF-8/C.UTF-8
@@ -1086,25 +802,20 @@ attached base packages:
 [1] stats     graphics  grDevices utils     datasets  methods   base     
 
 other attached packages:
-[1] workflowr_1.7.2
+[1] workflowr_1.7.1
 
 loaded via a namespace (and not attached):
- [1] vctrs_0.7.1       httr_1.4.8        cli_3.6.6         knitr_1.51       
- [5] rlang_1.2.0       xfun_0.56         stringi_1.8.7     otel_0.2.0       
+ [1] vctrs_0.6.5       httr_1.4.7        cli_3.6.5         knitr_1.50       
+ [5] rlang_1.1.6       xfun_0.52         stringi_1.8.7     otel_0.2.0       
  [9] processx_3.8.6    promises_1.5.0    jsonlite_2.0.0    glue_1.8.0       
-[13] rprojroot_2.1.1   git2r_0.36.2      htmltools_0.5.9   httpuv_1.6.17    
-[17] ps_1.9.1          sass_0.4.10       rmarkdown_2.30    jquerylib_0.1.4  
-[21] tibble_3.3.1      evaluate_1.0.5    fastmap_1.2.0     yaml_2.3.12      
-[25] lifecycle_1.0.5   whisker_0.4.1     stringr_1.6.0     compiler_4.5.2   
-[29] fs_2.1.0          pkgconfig_2.0.3   Rcpp_1.1.1        rstudioapi_0.18.0
-[33] later_1.4.8       digest_0.6.39     R6_2.6.1          pillar_1.11.1    
-[37] callr_3.8.0       magrittr_2.0.4    bslib_0.10.0      tools_4.5.2      
+[13] rprojroot_2.1.1   git2r_0.36.2      htmltools_0.5.8.1 httpuv_1.6.16    
+[17] ps_1.9.1          sass_0.4.10       rmarkdown_2.29    jquerylib_0.1.4  
+[21] tibble_3.3.0      evaluate_1.0.5    fastmap_1.2.0     yaml_2.3.10      
+[25] lifecycle_1.0.4   whisker_0.4.1     stringr_1.6.0     compiler_4.3.2   
+[29] fs_1.6.6          pkgconfig_2.0.3   Rcpp_1.1.0        rstudioapi_0.17.1
+[33] later_1.4.2       digest_0.6.39     R6_2.6.1          pillar_1.11.1    
+[37] callr_3.7.6       magrittr_2.0.3    bslib_0.9.0       tools_4.3.2      
 [41] cachem_1.1.0      getPass_0.2-4    </code></pre>
-</div>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 

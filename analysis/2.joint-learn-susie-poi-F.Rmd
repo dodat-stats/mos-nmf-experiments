@@ -1,5 +1,5 @@
 ---
-title: "Joint Learning of F in Poisson SuSiE"
+title: "2. Joint Learning of F in Poisson SuSiE"
 site: workflowr::wflow_site
 output:
   workflowr::wflow_html:
@@ -14,10 +14,14 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
                       fig.width = 7, fig.height = 4)
 ```
 
-This page turns the simulation at the end of
-`code/joint-learn-susie-poi-F.R` into a reproducible workflowr analysis. The
-experiment fits matrix-factorization Poisson SuSiE while updating the shared
-factor matrix `F`.
+This page extends the single-observation experiment to a count matrix. It turns
+the simulation at the end of `code/joint-learn-susie-poi-F.R` into a
+reproducible workflowr analysis, and fits matrix-factorization Poisson SuSiE
+while updating the shared factor matrix `F`.
+
+The key question is whether the model can recover both pieces of structure:
+the dictionary rows \(F_{k\cdot}\) and the sparse loading supports for each
+observation.
 
 ```{r source-code}
 source("code/joint-learn-susie-poi-F.R")
@@ -391,3 +395,12 @@ The support accuracy uses the true number of active factors for each simulated
 observation and asks whether the top posterior inclusion scores recover that
 support. This avoids penalizing one-factor observations only because the model
 has `D = 3` possible effects.
+
+## Takeaways
+
+With the true dictionary fixed, the experiment isolates posterior support
+recovery. With `F` learned, the same support task becomes coupled to factor
+recovery and label matching. This page is therefore the bridge between
+single-observation Poisson SuSiE and the later model-selection experiments:
+once \(F\) is learned, overfitting \(K\) can create redundant factor rows, and
+overfitting \(D\) can create extra single-effect dimensions.

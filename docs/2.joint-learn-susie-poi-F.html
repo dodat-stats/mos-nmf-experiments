@@ -11,9 +11,9 @@
 
 
 
-<title>Joint Learning of F in Poisson SuSiE</title>
+<title>2. Joint Learning of F in Poisson SuSiE</title>
 
-<script src="site_libs/header-attrs-2.30/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.29/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
@@ -333,11 +333,29 @@ div.tocify {
         <li>
   <a href="index.html">Home</a>
 </li>
-<li>
-  <a href="poisson-susie.html">Poisson SuSiE</a>
-</li>
-<li>
-  <a href="joint-learn-susie-poi-F.html">Joint Learn F</a>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    MF Poisson SuSiE
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="1.poisson-susie.html">1. Poisson SuSiE</a>
+    </li>
+    <li>
+      <a href="2.joint-learn-susie-poi-F.html">2. Joint learning of F</a>
+    </li>
+    <li>
+      <a href="3.overspecify-D-mf-poi-susie.html">3. Overspecified D</a>
+    </li>
+    <li>
+      <a href="4.overspecify-K-mf-poi-susie.html">4. Overspecified K</a>
+    </li>
+    <li>
+      <a href="5.tree-scenario.html">5. Tree scenario</a>
+    </li>
+  </ul>
 </li>
 <li>
   <a href="about.html">About</a>
@@ -363,16 +381,14 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">Joint Learning of F in Poisson SuSiE</h1>
+<h1 class="title toc-ignore">2. Joint Learning of F in Poisson SuSiE</h1>
 
 </div>
 
 
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
-<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
-workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span>
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span> workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span>
 </button>
 </p>
 <div id="workflowr-report" class="collapse">
@@ -381,9 +397,7 @@ aria-hidden="true"></span>
 <a data-toggle="tab" href="#summary">Summary</a>
 </li>
 <li>
-<a data-toggle="tab" href="#checks"> Checks <span
-class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> </a>
+<a data-toggle="tab" href="#checks"> Checks <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> </a>
 </li>
 <li>
 <a data-toggle="tab" href="#versions">Past versions</a>
@@ -392,27 +406,17 @@ aria-hidden="true"></span> </a>
 <div class="tab-content">
 <div id="summary" class="tab-pane fade in active">
 <p>
-<strong>Last updated:</strong> 2026-07-26
+<strong>Last updated:</strong> 2026-07-27
 </p>
 <p>
-<strong>Checks:</strong> <span
-class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 6
-<span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> 1
+<strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 5 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 2
 </p>
 <p>
-<strong>Knit directory:</strong> <code>mos-nmf-experiments/</code> <span
-class="glyphicon glyphicon-question-sign" aria-hidden="true"
-title="This is the local directory in which the code in this file was executed.">
-</span>
+<strong>Knit directory:</strong> <code>mos-nmf-experiments/</code> <span class="glyphicon glyphicon-question-sign" aria-hidden="true" title="This is the local directory in which the code in this file was executed."> </span>
 </p>
 <p>
-This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a>
-analysis was created with <a
-  href="https://github.com/workflowr/workflowr">workflowr</a> (version
-1.7.2). The <em>Checks</em> tab describes the reproducibility checks
-that were applied when the results were created. The <em>Past
-versions</em> tab lists the development history.
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a> analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version 1.7.1). The <em>Checks</em> tab describes the reproducibility checks that were applied when the results were created. The <em>Past versions</em> tab lists the development history.
 </p>
 <hr>
 </div>
@@ -421,176 +425,159 @@ versions</em> tab lists the development history.
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguncommittedchanges">
-<span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> <strong>R Markdown file:</strong> uncommitted
-changes </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguncommittedchanges"> <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> <strong>R Markdown file:</strong> uncommitted changes </a>
 </p>
 </div>
-<div id="strongRMarkdownfilestronguncommittedchanges"
-class="panel-collapse collapse">
+<div id="strongRMarkdownfilestronguncommittedchanges" class="panel-collapse collapse">
 <div class="panel-body">
-<p>The R Markdown file has unstaged changes. To know which version of
-the R Markdown file created these results, you’ll want to first commit
-it to the Git repo. If you’re still working on the analysis, you can
-ignore this warning. When you’re finished, you can run
-<code>wflow_publish</code> to commit the R Markdown file and build the
-HTML.</p>
+<p>The R Markdown is untracked by Git. To know which version of the R Markdown file created these results, you’ll want to first commit it to the Git repo. If you’re still working on the analysis, you can ignore this warning. When you’re finished, you can run <code>wflow_publish</code> to commit the R Markdown file and build the HTML.</p>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty">
-<span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongobjectspresent"> <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> <strong>Environment:</strong> objects present </a>
 </p>
 </div>
-<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div id="strongEnvironmentstrongobjectspresent" class="panel-collapse collapse">
 <div class="panel-body">
-<p>Great job! The global environment was empty. Objects defined in the
-global environment can affect the analysis in your R Markdown file in
-unknown ways. For reproduciblity it’s best to always run the code in an
-empty environment.</p>
+<p>
+The global environment had objects present when the code in the R Markdown file was run. These objects can affect the analysis in your R Markdown file in unknown ways. For reproduciblity it’s best to always run the code in an empty environment. Use <code>wflow_publish</code> or <code>wflow_build</code> to ensure that the code is always run in an empty environment.
+</p>
+<p>
+The following objects were defined in the global environment when these results were created:
+</p>
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th style="text-align:left;">
+Name
+</th>
+<th style="text-align:left;">
+Class
+</th>
+<th style="text-align:left;">
+Size
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+rstudio_pandoc
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+232 bytes
+</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20260624code">
-<span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>Seed:</strong>
-<code>set.seed(20260624)</code> </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20260624code"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Seed:</strong> <code>set.seed(20260624)</code> </a>
 </p>
 </div>
-<div id="strongSeedstrongcodesetseed20260624code"
-class="panel-collapse collapse">
+<div id="strongSeedstrongcodesetseed20260624code" class="panel-collapse collapse">
 <div class="panel-body">
-<p>The command <code>set.seed(20260624)</code> was run prior to running
-the code in the R Markdown file. Setting a seed ensures that any results
-that rely on randomness, e.g. subsampling or permutations, are
-reproducible.</p>
+<p>The command <code>set.seed(20260624)</code> was run prior to running the code in the R Markdown file. Setting a seed ensures that any results that rely on randomness, e.g. subsampling or permutations, are reproducible.</p>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded">
-<span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>Session information:</strong>
-recorded </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Session information:</strong> recorded </a>
 </p>
 </div>
-<div id="strongSessioninformationstrongrecorded"
-class="panel-collapse collapse">
+<div id="strongSessioninformationstrongrecorded" class="panel-collapse collapse">
 <div class="panel-body">
-<p>Great job! Recording the operating system, R version, and package
-versions is critical for reproducibility.</p>
+<p>Great job! Recording the operating system, R version, and package versions is critical for reproducibility.</p>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone">
-<span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Cache:</strong> none </a>
 </p>
 </div>
 <div id="strongCachestrongnone" class="panel-collapse collapse">
 <div class="panel-body">
-<p>Nice! There were no cached chunks for this analysis, so you can be
-confident that you successfully produced the results during this
-run.</p>
+<p>Nice! There were no cached chunks for this analysis, so you can be confident that you successfully produced the results during this run.</p>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative">
-<span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
 </p>
 </div>
 <div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
 <div class="panel-body">
-<p>Great job! Using relative paths to the files within your workflowr
-project makes it easier to run your code on other machines.</p>
+<p>Great job! Using relative paths to the files within your workflowr project makes it easier to run your code on other machines.</p>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstreef889e0dd4934d9caabb3f72e952c368655d48c21targetblankf889e0da">
-<span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>Repository version:</strong>
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/f889e0dd4934d9caabb3f72e952c368655d48c21" target="_blank">f889e0d</a>
-</a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstree5b765971ad9fc1633998a09e1fcb3af5b29c040dtargetblank5b76597a"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> <a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/5b765971ad9fc1633998a09e1fcb3af5b29c040d" target="_blank">5b76597</a> </a>
 </p>
 </div>
-<div
-id="strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstreef889e0dd4934d9caabb3f72e952c368655d48c21targetblankf889e0da"
-class="panel-collapse collapse">
+<div id="strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstree5b765971ad9fc1633998a09e1fcb3af5b29c040dtargetblank5b76597a" class="panel-collapse collapse">
 <div class="panel-body">
 <p>
-Great! You are using Git for version control. Tracking code development
-and connecting the code version to the results is critical for
-reproducibility.
+Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility.
 </p>
 <p>
-The results in this page were generated with repository version
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/f889e0dd4934d9caabb3f72e952c368655d48c21" target="_blank">f889e0d</a>.
-See the <em>Past versions</em> tab to see a history of the changes made
-to the R Markdown and HTML files.
+The results in this page were generated with repository version <a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/5b765971ad9fc1633998a09e1fcb3af5b29c040d" target="_blank">5b76597</a>. See the <em>Past versions</em> tab to see a history of the changes made to the R Markdown and HTML files.
 </p>
 <p>
-Note that you need to be careful to ensure that all relevant files for
-the analysis have been committed to Git prior to generating the results
-(you can use <code>wflow_publish</code> or
-<code>wflow_git_commit</code>). workflowr only checks the R Markdown
-file, but you know if there are other scripts or data files that it
-depends on. Below is the status of the Git repository when the results
-were generated:
+Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
 </p>
 <pre><code>
 Ignored files:
     Ignored:    .DS_Store
-    Ignored:    .RData
     Ignored:    .Rhistory
     Ignored:    .Rproj.user/
-    Ignored:    analysis/figure/
+    Ignored:    analysis/.DS_Store
 
 Untracked files:
-    Untracked:  tex/model-ideas.aux
-    Untracked:  tex/model-ideas.bbl
-    Untracked:  tex/model-ideas.blg
-    Untracked:  tex/model-ideas.brf
-    Untracked:  tex/model-ideas.log
-    Untracked:  tex/model-ideas.out
-    Untracked:  tex/model-ideas.pdf
-    Untracked:  tex/model-ideas.synctex.gz
-    Untracked:  tex/model-ideas.tex
-    Untracked:  tex/sparsity.bib
+    Untracked:  analysis/1.poisson-susie.Rmd
+    Untracked:  analysis/2.joint-learn-susie-poi-F.Rmd
+    Untracked:  analysis/3.overspecify-D-mf-poi-susie.Rmd
+    Untracked:  analysis/4.overspecify-K-mf-poi-susie.Rmd
+    Untracked:  analysis/5.tree-scenario.Rmd
+    Untracked:  tex/main.pdf
+    Untracked:  tex/main.tex
 
 Unstaged changes:
-    Modified:   analysis/joint-learn-susie-poi-F.Rmd
-    Modified:   code/joint-learn-susie-poi-F.R
-    Modified:   tex/mf-poi-susie.aux
-    Modified:   tex/mf-poi-susie.log
-    Modified:   tex/mf-poi-susie.pdf
-    Deleted:    tex/mf-poi-susie.synctex.gz
-    Modified:   tex/mf-poi-susie.tex
+    Modified:   .codex/project-memory.md
+    Modified:   analysis/_site.yml
+    Modified:   analysis/index.Rmd
+    Deleted:    analysis/joint-learn-susie-poi-F.Rmd
+    Modified:   analysis/mos-nmf-overspecify-D.Rmd
+    Deleted:    analysis/overspecify-D-mf-poi-susie.Rmd
+    Deleted:    analysis/overspecify-K-mf-poi-susie.Rmd
+    Deleted:    analysis/poisson-susie.Rmd
+    Deleted:    analysis/tree-scenario.Rmd
+    Modified:   code/mos-nmf-benchmark-utils.R
+    Modified:   code/mos-nmf.R
+    Modified:   paper-roadmap.md
+    Deleted:    tex/model-ideas.tex
 
 </code></pre>
 <p>
-Note that any generated files, e.g. HTML, png, CSS, etc., are not
-included in this status report because it is ok for generated content to
-have uncommitted changes.
+Note that any generated files, e.g. HTML, png, CSS, etc., are not included in this status report because it is ok for generated content to have uncommitted changes.
 </p>
 </div>
 </div>
@@ -600,107 +587,27 @@ have uncommitted changes.
 </div>
 <div id="versions" class="tab-pane fade">
 <p>
-These are the previous versions of the repository in which changes were
-made to the R Markdown
-(<code>analysis/joint-learn-susie-poi-F.Rmd</code>) and HTML
-(<code>docs/joint-learn-susie-poi-F.html</code>) files. If you’ve
-configured a remote Git repository (see <code>?wflow_git_remote</code>),
-click on the hyperlinks in the table below to view the files as they
-were in that past version.
+There are no past versions. Publish this analysis with <code>wflow_publish()</code> to start tracking its development.
 </p>
-<div class="table-responsive">
-<table class="table table-condensed table-hover">
-<thead>
-<tr>
-<th>
-File
-</th>
-<th>
-Version
-</th>
-<th>
-Author
-</th>
-<th>
-Date
-</th>
-<th>
-Message
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-html
-</td>
-<td>
-<a href="https://rawcdn.githack.com/dodat-stats/mos-nmf-experiments/d39c4cee4d76e3d4c8c4758ed33a1fbeca424f4e/docs/joint-learn-susie-poi-F.html" target="_blank">d39c4ce</a>
-</td>
-<td>
-dodat-stats
-</td>
-<td>
-2026-06-24
-</td>
-<td>
-Build site.
-</td>
-</tr>
-<tr>
-<td>
-Rmd
-</td>
-<td>
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/11bd28921b28ca496e5e3c9c6931379b76fa9910/analysis/joint-learn-susie-poi-F.Rmd" target="_blank">11bd289</a>
-</td>
-<td>
-dodat-stats
-</td>
-<td>
-2026-06-24
-</td>
-<td>
-poisson susie NMF
-</td>
-</tr>
-</tbody>
-</table>
-</div>
 <hr>
 </div>
 </div>
 </div>
-<p>This page turns the simulation at the end of
-<code>code/joint-learn-susie-poi-F.R</code> into a reproducible
-workflowr analysis. The experiment fits matrix-factorization Poisson
-SuSiE while updating the shared factor matrix <code>F</code>.</p>
+<p>This page extends the single-observation experiment to a count matrix. It turns the simulation at the end of <code>code/joint-learn-susie-poi-F.R</code> into a reproducible workflowr analysis, and fits matrix-factorization Poisson SuSiE while updating the shared factor matrix <code>F</code>.</p>
+<p>The key question is whether the model can recover both pieces of structure: the dictionary rows <span class="math inline">\(F_{k\cdot}\)</span> and the sparse loading supports for each observation.</p>
 <pre class="r"><code>source(&quot;code/joint-learn-susie-poi-F.R&quot;)</code></pre>
 <div id="fitted-model" class="section level2">
 <h2>Fitted Model</h2>
-<p>For a count matrix <span class="math inline">\(Y \in \mathbb{N}^{N
-\times M}\)</span>, the fitted model uses a shared nonnegative factor
-matrix <span class="math inline">\(F \in \mathbb{R}_+^{K \times
-M}\)</span> and a small number <span class="math inline">\(D\)</span> of
-single-effect components per observation: <span class="math display">\[
+<p>For a count matrix <span class="math inline">\(Y \in \mathbb{N}^{N \times M}\)</span>, the fitted model uses a shared nonnegative factor matrix <span class="math inline">\(F \in \mathbb{R}_+^{K \times M}\)</span> and a small number <span class="math inline">\(D\)</span> of single-effect components per observation: <span class="math display">\[
   Y_{im} \sim \mathrm{Poisson}\left(
     \sum_{d=1}^D \beta_{id} F_{\gamma_{id}m}
   \right).
-\]</span> Each effect chooses one factor row through <span
-class="math inline">\(\gamma_{id} \in \{1,\ldots,K\}\)</span>, and its
-size is <span class="math inline">\(\beta_{id} &gt; 0\)</span>. The
-variational fit estimates posterior assignment probabilities
-<code>gamma_bar[i, d, k]</code>, Gamma variational parameters for the
-effect sizes, and, in the unknown-<code>F</code> fit, the shared factor
-matrix <code>F</code>.</p>
-<p>The simulation below first checks recovery when the true factor
-matrix <code>F0</code> is given to the algorithm, then repeats the fit
-with <code>F</code> initialized by Poisson NMF and learned jointly.</p>
+\]</span> Each effect chooses one factor row through <span class="math inline">\(\gamma_{id} \in \{1,\ldots,K\}\)</span>, and its size is <span class="math inline">\(\beta_{id} &gt; 0\)</span>. The variational fit estimates posterior assignment probabilities <code>gamma_bar[i, d, k]</code>, Gamma variational parameters for the effect sizes, and, in the unknown-<code>F</code> fit, the shared factor matrix <code>F</code>.</p>
+<p>The simulation below first checks recovery when the true factor matrix <code>F0</code> is given to the algorithm, then repeats the fit with <code>F</code> initialized by Poisson NMF and learned jointly.</p>
 </div>
 <div id="simulate-data" class="section level2">
 <h2>Simulate Data</h2>
-<p>We create eight observation groups. Groups 1 through 5 each use one
-factor, and groups 6 through 8 use three-factor combinations.</p>
+<p>We create eight observation groups. Groups 1 through 5 each use one factor, and groups 6 through 8 use three-factor combinations.</p>
 <pre class="r"><code>set.seed(42)
 
 N = 1600
@@ -758,44 +665,7 @@ data.frame(group = 1:8, true_active_factors = true_patterns)</code></pre>
         main = &quot;True factor rows&quot;)
 legend(&quot;topright&quot;, legend = paste(&quot;factor&quot;, 1:K), col = 1:K, lty = 1,
        bty = &quot;n&quot;)</code></pre>
-<p><img src="figure/joint-learn-susie-poi-F.Rmd/true-factor-shapes-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
-<p>
-<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-true-factor-shapes-1">
-Past versions of true-factor-shapes-1.png
-</button>
-</p>
-<div id="fig-true-factor-shapes-1" class="collapse">
-<div class="table-responsive">
-<table class="table table-condensed table-hover">
-<thead>
-<tr>
-<th>
-Version
-</th>
-<th>
-Author
-</th>
-<th>
-Date
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/d39c4cee4d76e3d4c8c4758ed33a1fbeca424f4e/docs/figure/joint-learn-susie-poi-F.Rmd/true-factor-shapes-1.png" target="_blank">d39c4ce</a>
-</td>
-<td>
-dodat-stats
-</td>
-<td>
-2026-06-24
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
+<p><img src="figure/2.joint-learn-susie-poi-F.Rmd/true-factor-shapes-1.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>row_cosine = function(A, B) {
   A_norm = sqrt(rowSums(A^2))
   B_norm = sqrt(rowSums(B^2))
@@ -875,9 +745,7 @@ true_support_label = apply(L &gt; 0, 1, function(x) {
 </div>
 <div id="fit-with-true-f0" class="section level2">
 <h2>Fit With True F0</h2>
-<p>As a baseline, we first fit the model with the true factor matrix
-fixed. This isolates recovery of the posterior labels from the harder
-problem of learning <code>F</code>.</p>
+<p>As a baseline, we first fit the model with the true factor matrix fixed. This isolates recovery of the posterior labels from the harder problem of learning <code>F</code>.</p>
 <pre class="r"><code>fit_true_F0 = mf_poi_susie_fixed_F(
   Y = Y,
   F = F0,
@@ -890,44 +758,7 @@ problem of learning <code>F</code>.</p>
   gamma_step_ramp = 50
 )</code></pre>
 <pre class="r"><code>plot_elbo(fit_true_F0, &quot;ELBO with true F0&quot;)</code></pre>
-<p><img src="figure/joint-learn-susie-poi-F.Rmd/elbo-true-F0-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
-<p>
-<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-elbo-true-F0-1">
-Past versions of elbo-true-F0-1.png
-</button>
-</p>
-<div id="fig-elbo-true-F0-1" class="collapse">
-<div class="table-responsive">
-<table class="table table-condensed table-hover">
-<thead>
-<tr>
-<th>
-Version
-</th>
-<th>
-Author
-</th>
-<th>
-Date
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/d39c4cee4d76e3d4c8c4758ed33a1fbeca424f4e/docs/figure/joint-learn-susie-poi-F.Rmd/elbo-true-F0-1.png" target="_blank">d39c4ce</a>
-</td>
-<td>
-dodat-stats
-</td>
-<td>
-2026-06-24
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
+<p><img src="figure/2.joint-learn-susie-poi-F.Rmd/elbo-true-F0-1.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>top_k_true_F0 = matrix(0, N, D)
 for (d in 1:D) {
   top_k_true_F0[, d] = apply(fit_true_F0$gamma_bar[, d, ], 1, which.max)
@@ -953,44 +784,7 @@ axis(2, at = seq_len(K), labels = seq_len(K), las = 1)
 abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
        col = &quot;gray80&quot;, lty = 3)
 box()</code></pre>
-<p><img src="figure/joint-learn-susie-poi-F.Rmd/recovered-labels-true-F0-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
-<p>
-<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-recovered-labels-true-F0-1">
-Past versions of recovered-labels-true-F0-1.png
-</button>
-</p>
-<div id="fig-recovered-labels-true-F0-1" class="collapse">
-<div class="table-responsive">
-<table class="table table-condensed table-hover">
-<thead>
-<tr>
-<th>
-Version
-</th>
-<th>
-Author
-</th>
-<th>
-Date
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/d39c4cee4d76e3d4c8c4758ed33a1fbeca424f4e/docs/figure/joint-learn-susie-poi-F.Rmd/recovered-labels-true-F0-1.png" target="_blank">d39c4ce</a>
-</td>
-<td>
-dodat-stats
-</td>
-<td>
-2026-06-24
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
+<p><img src="figure/2.joint-learn-susie-poi-F.Rmd/recovered-labels-true-F0-1.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>recovered_by_group_true_F0 = do.call(rbind, lapply(1:8, function(g) {
   idx = which(grp == g)
   tab = table(recovered_label_true_F0[idx])
@@ -1092,9 +886,7 @@ recovered_by_group_true_F0</code></pre>
 </div>
 <div id="fit-with-unknown-f" class="section level2">
 <h2>Fit With Unknown F</h2>
-<p>The fit initializes <code>F</code> with Poisson NMF, initializes the
-row-level sparse assignments from the Poisson-NMF loading matrix, then
-updates <code>F</code> inside the variational loop with damping.</p>
+<p>The fit initializes <code>F</code> with Poisson NMF, initializes the row-level sparse assignments from the Poisson-NMF loading matrix, then updates <code>F</code> inside the variational loop with damping.</p>
 <pre class="r"><code>fit = mf_poi_susie(
   Y = Y,
   K = K,
@@ -1116,44 +908,7 @@ updates <code>F</code> inside the variational loop with damping.</p>
   patience = 2
 )</code></pre>
 <pre class="r"><code>plot_elbo(fit, &quot;Variational objective&quot;)</code></pre>
-<p><img src="figure/joint-learn-susie-poi-F.Rmd/elbo-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
-<p>
-<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-elbo-1">
-Past versions of elbo-1.png
-</button>
-</p>
-<div id="fig-elbo-1" class="collapse">
-<div class="table-responsive">
-<table class="table table-condensed table-hover">
-<thead>
-<tr>
-<th>
-Version
-</th>
-<th>
-Author
-</th>
-<th>
-Date
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/d39c4cee4d76e3d4c8c4758ed33a1fbeca424f4e/docs/figure/joint-learn-susie-poi-F.Rmd/elbo-1.png" target="_blank">d39c4ce</a>
-</td>
-<td>
-dodat-stats
-</td>
-<td>
-2026-06-24
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
+<p><img src="figure/2.joint-learn-susie-poi-F.Rmd/elbo-1.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>data.frame(
   converged = fit$converged,
   n_iter = fit$n_iter,
@@ -1164,9 +919,7 @@ dodat-stats
 </div>
 <div id="factor-recovery" class="section level2">
 <h2>Factor Recovery</h2>
-<p>Rows of the learned <code>F</code> are identifiable only up to
-permutation, so we first match learned rows to true rows using cosine
-similarity.</p>
+<p>Rows of the learned <code>F</code> are identifiable only up to permutation, so we first match learned rows to true rows using cosine similarity.</p>
 <pre class="r"><code>factor_match = match_factor_rows(fit$F, F0)
 learned_to_true = factor_match$matched_true_factor
 
@@ -1186,9 +939,7 @@ factor_match</code></pre>
 </div>
 <div id="recovery" class="section level2">
 <h2>Recovery</h2>
-<p>For each observation and effect, we summarize the factor with the
-largest posterior assignment probability, then remap learned factor
-labels to the matched true labels.</p>
+<p>For each observation and effect, we summarize the factor with the largest posterior assignment probability, then remap learned factor labels to the matched true labels.</p>
 <pre class="r"><code>top_k = matrix(0, N, D)
 for (d in 1:D) {
   top_k[, d] = apply(fit$gamma_bar[, d, ], 1, which.max)
@@ -1363,44 +1114,7 @@ axis(2, at = seq_len(K), labels = seq_len(K), las = 1)
 abline(v = seq(n_per_group, N - n_per_group, by = n_per_group),
        col = &quot;gray80&quot;, lty = 3)
 box()</code></pre>
-<p><img src="figure/joint-learn-susie-poi-F.Rmd/recovered-factors-learned-F-1.png" alt="" width="672" style="display: block; margin: auto;" /></p>
-<p>
-<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-recovered-factors-learned-F-1">
-Past versions of recovered-factors-learned-F-1.png
-</button>
-</p>
-<div id="fig-recovered-factors-learned-F-1" class="collapse">
-<div class="table-responsive">
-<table class="table table-condensed table-hover">
-<thead>
-<tr>
-<th>
-Version
-</th>
-<th>
-Author
-</th>
-<th>
-Date
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/d39c4cee4d76e3d4c8c4758ed33a1fbeca424f4e/docs/figure/joint-learn-susie-poi-F.Rmd/recovered-factors-learned-F-1.png" target="_blank">d39c4ce</a>
-</td>
-<td>
-dodat-stats
-</td>
-<td>
-2026-06-24
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
+<p><img src="figure/2.joint-learn-susie-poi-F.Rmd/recovered-factors-learned-F-1.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>support_recovery = data.frame(
   fit = c(&quot;true_F0&quot;, &quot;learned_F&quot;),
   exact_support_accuracy = c(
@@ -1419,30 +1133,29 @@ support_recovery</code></pre>
 <pre><code>        fit exact_support_accuracy mean_normalized_gamma_entropy
 1   true_F0               0.965000                     0.3646963
 2 learned_F               0.995625                     0.3948469</code></pre>
-<p>The support accuracy uses the true number of active factors for each
-simulated observation and asks whether the top posterior inclusion
-scores recover that support. This avoids penalizing one-factor
-observations only because the model has <code>D = 3</code> possible
-effects.</p>
+<p>The support accuracy uses the true number of active factors for each simulated observation and asks whether the top posterior inclusion scores recover that support. This avoids penalizing one-factor observations only because the model has <code>D = 3</code> possible effects.</p>
+</div>
+<div id="takeaways" class="section level2">
+<h2>Takeaways</h2>
+<p>With the true dictionary fixed, the experiment isolates posterior support recovery. With <code>F</code> learned, the same support task becomes coupled to factor recovery and label matching. This page is therefore the bridge between single-observation Poisson SuSiE and the later model-selection experiments: once <span class="math inline">\(F\)</span> is learned, overfitting <span class="math inline">\(K\)</span> can create redundant factor rows, and overfitting <span class="math inline">\(D\)</span> can create extra single-effect dimensions.</p>
 <br>
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
-<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
-Session information
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span> Session information
 </button>
 </p>
 <div id="workflowr-sessioninfo" class="collapse">
 <pre class="r"><code>sessionInfo()</code></pre>
-<pre><code>R version 4.5.2 (2025-10-31)
-Platform: aarch64-apple-darwin20
-Running under: macOS Tahoe 26.5.1
+<pre><code>R version 4.3.2 (2023-10-31)
+Platform: aarch64-apple-darwin20 (64-bit)
+Running under: macOS 26.5.1
 
 Matrix products: default
 BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
-LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+LAPACK: /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.11.0
 
 locale:
-[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+[1] C.UTF-8/C.UTF-8/C.UTF-8/C/C.UTF-8/C.UTF-8
 
 time zone: America/New_York
 tzcode source: internal
@@ -1450,22 +1163,21 @@ tzcode source: internal
 attached base packages:
 [1] stats     graphics  grDevices utils     datasets  methods   base     
 
+other attached packages:
+[1] workflowr_1.7.1
+
 loaded via a namespace (and not attached):
- [1] vctrs_0.7.1       cli_3.6.6         knitr_1.51        rlang_1.2.0      
- [5] xfun_0.56         stringi_1.8.7     otel_0.2.0        promises_1.5.0   
- [9] jsonlite_2.0.0    workflowr_1.7.2   glue_1.8.0        rprojroot_2.1.1  
-[13] git2r_0.36.2      htmltools_0.5.9   httpuv_1.6.17     sass_0.4.10      
-[17] rmarkdown_2.30    jquerylib_0.1.4   evaluate_1.0.5    tibble_3.3.1     
-[21] fastmap_1.2.0     yaml_2.3.12       lifecycle_1.0.5   whisker_0.4.1    
-[25] stringr_1.6.0     compiler_4.5.2    fs_2.1.0          Rcpp_1.1.1       
-[29] pkgconfig_2.0.3   rstudioapi_0.18.0 later_1.4.8       digest_0.6.39    
-[33] R6_2.6.1          pillar_1.11.1     magrittr_2.0.4    bslib_0.10.0     
-[37] tools_4.5.2       cachem_1.1.0     </code></pre>
-</div>
-</div>
-</div>
-</div>
-</div>
+ [1] vctrs_0.6.5       httr_1.4.7        cli_3.6.5         knitr_1.50       
+ [5] rlang_1.1.6       xfun_0.52         stringi_1.8.7     otel_0.2.0       
+ [9] processx_3.8.6    promises_1.5.0    jsonlite_2.0.0    glue_1.8.0       
+[13] rprojroot_2.1.1   git2r_0.36.2      htmltools_0.5.8.1 httpuv_1.6.16    
+[17] ps_1.9.1          sass_0.4.10       rmarkdown_2.29    jquerylib_0.1.4  
+[21] tibble_3.3.0      evaluate_1.0.5    fastmap_1.2.0     yaml_2.3.10      
+[25] lifecycle_1.0.4   whisker_0.4.1     stringr_1.6.0     compiler_4.3.2   
+[29] fs_1.6.6          pkgconfig_2.0.3   Rcpp_1.1.0        rstudioapi_0.17.1
+[33] later_1.4.2       digest_0.6.39     R6_2.6.1          pillar_1.11.1    
+[37] callr_3.7.6       magrittr_2.0.3    bslib_0.9.0       tools_4.3.2      
+[41] cachem_1.1.0      getPass_0.2-4    </code></pre>
 </div>
 </div>
 

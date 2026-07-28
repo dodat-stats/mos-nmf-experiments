@@ -1,5 +1,5 @@
 ---
-title: "Home"
+title: "MoS-NMF Experiments"
 site: workflowr::wflow_site
 output:
   workflowr::wflow_html:
@@ -8,11 +8,34 @@ editor_options:
   chunk_output_type: console
 ---
 
-Documenting experiments with MoS-NMF (Mixture of Submanifold Non-negative Matrix Factorization).
+This workflowr site records the experiments behind the MoS-NMF project.
+The current sequence starts from Poisson SuSiE, moves to matrix-factorization
+Poisson SuSiE, and then studies the model-selection behavior that motivates
+MoS-NMF.
 
-+ [Poisson susie](poisson-susie.html)
+## Main sequence
 
-+ [susie poisson NMF](joint-learn-susie-poi-F.html)
+1. [Poisson SuSiE](1.poisson-susie.html): a single-observation sparse Poisson
+   decomposition with posterior uncertainty over factor assignments.
 
+2. [Joint learning of \(F\)](2.joint-learn-susie-poi-F.html):
+   MF-Poisson-SuSiE when the shared factor matrix is learned rather than fixed.
 
+3. [Overspecified \(D\)](3.overspecify-D-mf-poi-susie.html):
+   how MF-Poisson-SuSiE behaves when the fitted number of single-effect
+   dimensions is larger than the true support size.
 
+4. [Overspecified \(K\)](4.overspecify-K-mf-poi-susie.html):
+   how overfitting the factor dictionary creates redundant or competing factor
+   rows, and how posterior assignment probabilities reveal that ambiguity.
+
+5. [Tree scenario](5.tree-scenario.html): a harder no-anchor setting where every
+   group uses multiple factors and support recovery depends on shared
+   co-occurrence structure.
+
+## Project question
+
+The central question is whether posterior objects such as
+\(\bar\gamma_{idk}\) and \(\bar\gamma_{sdk}\) can do more than recover sparse
+supports: can they also diagnose model-selection uncertainty when \(K\), \(D\),
+or later \(S\) is overfitted?

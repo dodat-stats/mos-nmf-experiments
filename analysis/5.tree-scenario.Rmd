@@ -1,5 +1,5 @@
 ---
-title: "MF Poisson SuSiE Tree Scenario"
+title: "5. MF Poisson SuSiE Tree Scenario"
 site: workflowr::wflow_site
 output:
   workflowr::wflow_html:
@@ -22,6 +22,10 @@ some groups add one leaf factor.
 
 We fit the model with the correct number of factors, `K_fit = 7`, but with an
 overspecified number of effects, `D_fit = 5`.
+
+The purpose of this page is to move beyond anchor-style simulations. If no
+group is generated from a single factor, recovery must come from repeated
+co-occurrence patterns rather than from easy one-factor examples.
 
 ```{r source-code}
 source("code/joint-learn-susie-poi-F.R")
@@ -596,3 +600,12 @@ effects indicates that the extra fitted dimensions are not confidently assigned
 to a factor. Sizable lower-ranked effects with low entropy are more concerning:
 they mean the overspecified `D` is acting as additional confident components,
 which can blur the intended tree support patterns.
+
+## Takeaways
+
+This scenario is a stress test for support recovery without single-factor
+anchors. It motivates the MoS-NMF layer: the important structure is no longer
+only which factors appear in each observation, but which sparsity patterns
+repeat across groups. The posterior quantities from MF-Poisson-SuSiE remain
+useful diagnostics, but the next modeling step should share motif-level
+structure across observations rather than fitting each observation independently.

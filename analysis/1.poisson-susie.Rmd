@@ -1,5 +1,5 @@
 ---
-title: "Poisson SuSiE"
+title: "1. Poisson SuSiE"
 site: workflowr::wflow_site
 output:
   workflowr::wflow_html:
@@ -14,8 +14,15 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
                       fig.width = 7, fig.height = 4)
 ```
 
-This page demonstrates the single-observation Poisson SuSiE algorithm implemented
-in `code/poisson-susie.R`.
+This page is the starting point for the project. It demonstrates the
+single-observation Poisson SuSiE algorithm implemented in
+`code/poisson-susie.R`.
+
+The experiment has two goals. First, it checks whether a sparse Poisson
+single-effect decomposition can recover the active factor rows. Second, it
+uses an exactly duplicated factor row to test whether the posterior over
+\(\gamma\) represents non-identifiability as uncertainty rather than forcing an
+arbitrary hard choice.
 
 ```{r source-code}
 source("code/poisson-susie.R")
@@ -223,3 +230,13 @@ assignments instead of duplicating an already-explained factor. This can make
 the interpretation cleaner when \(D\) is larger than the true number of active
 components, although the reset step can also introduce small ELBO jumps because
 it perturbs the current coordinate-ascent solution.
+
+## Takeaways
+
+This first experiment establishes the basic role of `gamma_bar`: conditional on
+a dictionary \(F\), it is a posterior distribution over which factor explains
+each single effect. When two factor rows are identical, the posterior should
+split mass across those labels. When \(D\) is larger than needed, symmetry
+breaking can prevent repeated effects from explaining the same signal, but it
+should be treated as an algorithmic stabilization device rather than a fully
+principled model-selection step.

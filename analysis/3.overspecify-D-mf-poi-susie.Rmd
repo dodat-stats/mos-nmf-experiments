@@ -1,5 +1,5 @@
 ---
-title: "MF Poisson SuSiE With Overspecified D"
+title: "3. MF Poisson SuSiE With Overspecified D"
 site: workflowr::wflow_site
 output:
   workflowr::wflow_html:
@@ -14,11 +14,16 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
                       fig.width = 7, fig.height = 4)
 ```
 
-This page stress-tests the MF-Poisson-SuSiE fit when the number of fitted
-single-effect components is larger than the true sparsity dimension. The main
-question is whether the fitted model still recovers the true supports when it
-has extra effects available, and whether those extra effects carry small
-posterior loading mass.
+The previous page fits MF-Poisson-SuSiE with the correct value \(D = 3\). This
+page stress-tests the same model with \(D = 5\), while the data-generating
+mechanism still has at most three active factors per observation.
+
+The question is whether the two extra single-effect dimensions become harmless.
+A benign extra dimension should either have small posterior expected loading
+mass, diffuse posterior assignment probabilities \(\bar\gamma_{idk}\), or both.
+This makes overfitted \(D\) a data-wise diagnostic: for each observation \(i\),
+we inspect the fitted dimensions \(d=1,\ldots,D\) and ask which dimensions carry
+real loading mass.
 
 ```{r source-code}
 source("code/joint-learn-susie-poi-F.R")
