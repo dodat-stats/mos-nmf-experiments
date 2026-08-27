@@ -1,0 +1,580 @@
+---
+title: "Motif-Specific Dimension Selection by SuSiE Credible-Set Purity"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 8, fig.height = 4.5)
+```
+
+This experiment fits MoS-NMF with a common upper bound
+$D_{\mathrm{fit}}=5$ and selects an effective dimension separately for each
+motif using the credible-set purity rule from SuSiE. The Gamma prior shape and
+rate parameters are still updated by empirical Bayes during fitting, but they
+are not used for dimension selection.
+
+```{r source-code}
+source("code/mos-nmf-benchmark-utils.R")
+```
+
+## Credible sets and purity
+
+For each motif $s$ and fitted dimension $d$, order the posterior factor
+probabilities $\bar\gamma_{sdk}$ from largest to smallest. The 90% credible set
+$\mathrm{CS}_{sd}$ is the smallest subset satisfying
+
+$$
+\sum_{k\in\mathrm{CS}_{sd}}\bar\gamma_{sdk}\geq 0.9.
+$$
+
+Let $R_{kk'}=\operatorname{cor}(F_k,F_{k'})$ be the Pearson correlation between
+the fitted factor rows. Following the standard SuSiE convention, credible-set
+purity is the minimum absolute pairwise correlation,
+
+$$
+\operatorname{purity}(\mathrm{CS}_{sd})
+=
+\min_{k\neq k'\in\mathrm{CS}_{sd}}|R_{kk'}|.
+$$
+
+A singleton credible set has purity one. We retain credible sets whose purity
+is at least 0.5 and remove exact duplicate credible sets within each motif.
+The estimated motif dimension is the number of distinct retained credible
+sets. The 0.5 cutoff is fixed as the primary rule; other cutoffs are reported
+only as sensitivity analysis.
+
+## Simulation design
+
+```{r design}
+n_seed = as.integer(Sys.getenv("MOS_NMF_CS_SEEDS", "20"))
+benchmark_seeds = seq_len(n_seed)
+coverage = 0.9
+purity_cutoffs = c(0, 0.25, 0.5, 0.75, 0.9)
+primary_cutoff = 0.5
+train_fraction = 0.8
+D_fit = 5
+
+block_supports = list(
+  c(1),
+  c(2),
+  c(3),
+  c(4),
+  c(5),
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(2, 3, 5)
+)
+
+tree_supports = list(
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(1, 5, 6),
+  c(1, 5, 7),
+  c(1, 2),
+  c(1, 5)
+)
+
+data.frame(
+  scenario = c("block", "tree/no-anchor"),
+  K = c(5, 7),
+  S = c(length(block_supports), length(tree_supports)),
+  true_motif_dimensions = c("1 or 3", "2 or 3"),
+  fitted_D = D_fit,
+  N = 240,
+  M = c(250, 280),
+  n_seed = n_seed,
+  credible_set_coverage = coverage
+)
+```
+
+Both repeated-surplus and diffuse-surplus initializations are evaluated.
+Repeated pure dimensions should be removed as duplicate credible sets, while
+diffuse dimensions should produce low-purity credible sets.
+
+## Evaluation helpers
+
+```{r helpers}
+match_motifs_to_groups = function(omega, true_group) {
+  true_group = as.integer(as.factor(true_group))
+  S_fit = ncol(omega)
+  S_true = max(true_group)
+  if (S_fit != S_true) stop("This experiment requires fitted S to equal true S")
+
+  score = matrix(0, nrow = S_fit, ncol = S_true)
+  for (g in seq_len(S_true)) {
+    score[, g] = colSums(omega[true_group == g, , drop = FALSE])
+  }
+  if (requireNamespace("clue", quietly = TRUE)) {
+    as.integer(clue::solve_LSAP(max(score) - score))
+  } else {
+    permutations = all_permutations(seq_len(S_true))
+    objective = apply(permutations, 1, function(p) {
+      sum(score[cbind(seq_len(S_fit), p)])
+    })
+    permutations[which.max(objective), ]
+  }
+}
+
+parse_index_set = function(x) {
+  if (is.na(x) || x == "") return(integer(0))
+  as.integer(strsplit(x, ",", fixed = TRUE)[[1]])
+}
+
+jaccard = function(estimated, truth) {
+  if (length(estimated) == 0 && length(truth) == 0) return(1)
+  length(intersect(estimated, truth)) / length(union(estimated, truth))
+}
+
+evaluate_cutoff = function(credible_set_table, purity_cutoff) {
+  do.call(rbind, lapply(split(credible_set_table,
+                              credible_set_table$motif), function(tab) {
+    retained = which(tab$purity >= purity_cutoff)
+    if (length(retained) > 0) {
+      retained = retained[!duplicated(tab$credible_set[retained])]
+    }
+
+    selected_top_factors = sort(unique(tab$top_true_factor[retained]))
+    selected_cs_union = sort(unique(unlist(tab$credible_set_true[retained])))
+    truth = sort(unique(tab$true_support[[1]]))
+
+    data.frame(
+      scenario = tab$scenario[1],
+      initialization = tab$initialization[1],
+      seed = tab$seed[1],
+      purity_cutoff = purity_cutoff,
+      motif = tab$motif[1],
+      matched_group = tab$matched_group[1],
+      true_D = length(truth),
+      D_hat = length(retained),
+      dimension_error = length(retained) - length(truth),
+      exact_D = length(retained) == length(truth),
+      exact_top_factor_support =
+        length(selected_top_factors) == length(truth) &&
+        setequal(selected_top_factors, truth),
+      top_factor_jaccard = jaccard(selected_top_factors, truth),
+      credible_set_true_factor_coverage =
+        mean(truth %in% selected_cs_union),
+      credible_set_union_precision = if (length(selected_cs_union) == 0) 0 else
+        mean(selected_cs_union %in% truth),
+      selected_credible_sets =
+        paste(tab$credible_set[retained], collapse = ";"),
+      stringsAsFactors = FALSE
+    )
+  }))
+}
+
+summarize_selection = function(selection_table) {
+  keys = interaction(selection_table$scenario,
+                     selection_table$initialization,
+                     selection_table$purity_cutoff, drop = TRUE)
+  do.call(rbind, lapply(split(selection_table, keys), function(tab) {
+    run_keys = interaction(tab$seed, tab$scenario, tab$initialization,
+                           tab$purity_cutoff, drop = TRUE)
+    run_summary = do.call(rbind, lapply(split(tab, run_keys), function(run) {
+      data.frame(
+        exact_D = mean(run$exact_D),
+        D_mae = mean(abs(run$dimension_error)),
+        D_bias = mean(run$dimension_error),
+        exact_top_factor_support = mean(run$exact_top_factor_support),
+        top_factor_jaccard = mean(run$top_factor_jaccard),
+        credible_set_true_factor_coverage =
+          mean(run$credible_set_true_factor_coverage),
+        credible_set_union_precision =
+          mean(run$credible_set_union_precision)
+      )
+    }))
+
+    data.frame(
+      scenario = tab$scenario[1],
+      initialization = tab$initialization[1],
+      purity_cutoff = tab$purity_cutoff[1],
+      n_seed = length(unique(tab$seed)),
+      exact_D_mean = mean(run_summary$exact_D),
+      exact_D_sd = sd(run_summary$exact_D),
+      D_mae_mean = mean(run_summary$D_mae),
+      D_mae_sd = sd(run_summary$D_mae),
+      D_bias_mean = mean(run_summary$D_bias),
+      D_bias_sd = sd(run_summary$D_bias),
+      exact_top_factor_support_mean =
+        mean(run_summary$exact_top_factor_support),
+      exact_top_factor_support_sd = sd(run_summary$exact_top_factor_support),
+      top_factor_jaccard_mean = mean(run_summary$top_factor_jaccard),
+      top_factor_jaccard_sd = sd(run_summary$top_factor_jaccard),
+      credible_set_true_factor_coverage_mean =
+        mean(run_summary$credible_set_true_factor_coverage),
+      credible_set_union_precision_mean =
+        mean(run_summary$credible_set_union_precision)
+    )
+  }))
+}
+```
+
+## Fit models
+
+EB prior means are retained as diagnostics but do not enter
+`evaluate_cutoff()`.
+
+```{r run-helpers}
+cache_version = "v3"
+cache_dir = file.path("analysis", "cache",
+                      paste0("mos-nmf-CS-D-", cache_version))
+dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+
+run_one_fit = function(scenario, initialization, seed) {
+  cache_file = file.path(
+    cache_dir,
+    sprintf("%s-%s-seed-%03d.rds", scenario, initialization, seed)
+  )
+  if (file.exists(cache_file)) return(readRDS(cache_file))
+
+  if (scenario == "block") {
+    supports = block_supports
+    dat = simulate_support_scenario(
+      N = 240, M = 250, K = 5,
+      group_supports = supports,
+      shape_vec = c(rep(10, 5), rep(20, 3)),
+      seed = 5000 + seed,
+      train_fraction = train_fraction
+    )
+    K = 5
+  } else if (scenario == "tree") {
+    supports = tree_supports
+    dat = simulate_support_scenario(
+      N = 240, M = 280, K = 7,
+      group_supports = supports,
+      shape_vec = rep(18, length(supports)),
+      seed = 6000 + seed,
+      train_fraction = train_fraction
+    )
+    K = 7
+  } else {
+    stop("Unknown scenario")
+  }
+
+  fit = mos_nmf(
+    Y = dat$Y,
+    K = K,
+    S = length(supports),
+    D = D_fit,
+    max_iters = 12,
+    n_inner = 3,
+    mf_max_iters = 25,
+    mf_nmf_iters = 45,
+    init_seed = seed,
+    update_prior = TRUE,
+    update_F = TRUE,
+    update_gamma = TRUE,
+    update_slot_scale = FALSE,
+    gamma_init_floor = 0.05,
+    surplus_slots = initialization,
+    gamma_step_init = 0.5,
+    gamma_step_ramp = 8,
+    F_step_init = 0.2,
+    F_step_ramp = 12,
+    tol = 1e-5,
+    min_iters = 5,
+    patience = 2,
+    block_size = 100
+  )
+
+  factor_match = match_factor_rows(fit$F, dat$F0)
+  motif_to_group = match_motifs_to_groups(fit$omega, dat$grp)
+  credible_sets = motif_credible_sets(
+    fit,
+    coverage = coverage,
+    min_abs_correlation = 0,
+    deduplicate = FALSE
+  )$dimensions
+  prior_mean = fit$alpha0 / pmax(fit$lambda0, 1e-12)
+  prior_fraction = prior_mean / rowSums(prior_mean)
+
+  credible_sets$scenario = scenario
+  credible_sets$initialization = initialization
+  credible_sets$seed = seed
+  credible_sets$matched_group = motif_to_group[credible_sets$motif]
+  credible_sets$true_D = lengths(supports)[credible_sets$matched_group]
+  credible_sets$true_support = I(lapply(
+    credible_sets$matched_group,
+    function(group) supports[[group]]
+  ))
+  credible_sets$credible_set_fitted = lapply(
+    credible_sets$credible_set,
+    parse_index_set
+  )
+  credible_sets$credible_set_true = I(lapply(
+    credible_sets$credible_set_fitted,
+    function(set) sort(factor_match$learned_to_true[set])
+  ))
+  credible_sets$top_true_factor =
+    factor_match$learned_to_true[credible_sets$top_factor]
+  credible_sets$EB_prior_mean = prior_mean[
+    cbind(credible_sets$motif, credible_sets$dimension)
+  ]
+  credible_sets$EB_prior_fraction = prior_fraction[
+    cbind(credible_sets$motif, credible_sets$dimension)
+  ]
+
+  fit_summary = data.frame(
+    scenario = scenario,
+    initialization = initialization,
+    seed = seed,
+    cluster_accuracy = cluster_accuracy(fit$z_hat, dat$grp),
+    mean_factor_cosine = mean(factor_match$table$cosine),
+    min_factor_cosine = min(factor_match$table$cosine),
+    mean_max_responsibility = mean(apply(fit$omega, 1, max))
+  )
+
+  result = list(credible_sets = credible_sets, fit_summary = fit_summary)
+  saveRDS(result, cache_file)
+  result
+}
+```
+
+```{r run-models}
+jobs = expand.grid(
+  scenario = c("block", "tree"),
+  initialization = c("repeat", "uniform"),
+  seed = benchmark_seeds,
+  stringsAsFactors = FALSE
+)
+run_job = function(j) {
+  run_one_fit(jobs$scenario[j], jobs$initialization[j], jobs$seed[j])
+}
+
+requested_cores = as.integer(Sys.getenv("MOS_NMF_CS_CORES", "4"))
+available_cores = parallel::detectCores()
+if (is.na(requested_cores)) requested_cores = 1L
+if (is.na(available_cores)) available_cores = requested_cores
+n_cores = max(1L, min(requested_cores, available_cores, nrow(jobs)))
+if (.Platform$OS.type == "windows" || n_cores == 1L) {
+  result_list = lapply(seq_len(nrow(jobs)), run_job)
+} else {
+  result_list = parallel::mclapply(seq_len(nrow(jobs)), run_job,
+                                   mc.cores = n_cores)
+}
+
+credible_set_results = do.call(rbind, lapply(result_list, `[[`,
+                                              "credible_sets"))
+fit_results = do.call(rbind, lapply(result_list, `[[`, "fit_summary"))
+selection_results = do.call(rbind, lapply(result_list, function(result) {
+  do.call(rbind, lapply(purity_cutoffs, function(cutoff) {
+    evaluate_cutoff(result$credible_sets, cutoff)
+  }))
+}))
+rownames(credible_set_results) = NULL
+rownames(selection_results) = NULL
+rownames(fit_results) = NULL
+
+saveRDS(
+  list(credible_sets = credible_set_results,
+       selection = selection_results,
+       fits = fit_results),
+  file.path(cache_dir, sprintf("combined-%03d-seeds.rds", n_seed))
+)
+```
+
+## Selection results
+
+```{r selection-summary}
+selection_summary = summarize_selection(selection_results)
+numeric_columns = vapply(selection_summary, is.numeric, logical(1))
+numeric_columns[match(c("purity_cutoff", "n_seed"),
+                      names(selection_summary))] = FALSE
+selection_summary[numeric_columns] = round(
+  selection_summary[numeric_columns], 4
+)
+selection_summary
+```
+
+```{r cutoff-plots}
+plot_cutoff_metric = function(summary_table, metric, ylab) {
+  op = par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+  on.exit(par(op))
+  for (scenario in c("block", "tree")) {
+    tab = summary_table[summary_table$scenario == scenario, ]
+    repeat_tab = tab[tab$initialization == "repeat", ]
+    uniform_tab = tab[tab$initialization == "uniform", ]
+    plot(repeat_tab$purity_cutoff, repeat_tab[[metric]], type = "b", pch = 19,
+         ylim = c(0, 1), xlab = "Minimum CS purity", ylab = ylab,
+         main = scenario)
+    lines(uniform_tab$purity_cutoff, uniform_tab[[metric]], type = "b",
+          pch = 17, col = "firebrick")
+    abline(v = primary_cutoff, lty = 3, col = "gray40")
+    legend("bottomleft", c("repeat surplus", "diffuse surplus"),
+           pch = c(19, 17), col = c("black", "firebrick"), bty = "n")
+  }
+}
+
+plot_cutoff_metric(selection_summary, "exact_D_mean",
+                   "Fraction of motifs with correct D")
+plot_cutoff_metric(selection_summary, "exact_top_factor_support_mean",
+                   "Fraction of exact top-factor supports")
+plot_cutoff_metric(selection_summary,
+                   "credible_set_true_factor_coverage_mean",
+                   "True-factor coverage by selected CSs")
+```
+
+## Primary cutoff
+
+```{r primary-summary}
+primary_summary = selection_summary[
+  selection_summary$purity_cutoff == primary_cutoff,
+  c("scenario", "initialization", "n_seed",
+    "exact_D_mean", "exact_D_sd", "D_mae_mean", "D_mae_sd",
+    "D_bias_mean", "D_bias_sd",
+    "exact_top_factor_support_mean", "exact_top_factor_support_sd",
+    "top_factor_jaccard_mean", "top_factor_jaccard_sd",
+    "credible_set_true_factor_coverage_mean",
+    "credible_set_union_precision_mean")
+]
+primary_summary
+```
+
+```{r dimension-confusion}
+primary_selection = selection_results[
+  selection_results$purity_cutoff == primary_cutoff, ]
+dimension_confusion = as.data.frame(with(
+  primary_selection,
+  table(scenario, initialization, true_D, D_hat)
+))
+dimension_confusion[dimension_confusion$Freq > 0, ]
+```
+
+## Credible-set diagnostics
+
+```{r credible-set-summary}
+credible_set_group = interaction(
+  credible_set_results$scenario,
+  credible_set_results$initialization,
+  credible_set_results$seed,
+  credible_set_results$motif,
+  drop = TRUE
+)
+credible_set_results$duplicate_within_motif = ave(
+  seq_len(nrow(credible_set_results)),
+  credible_set_group,
+  FUN = function(index) {
+    as.numeric(duplicated(credible_set_results$credible_set[index]))
+  }
+)
+
+aggregate(
+  cbind(credible_set_size, posterior_coverage, purity,
+        duplicate_within_motif, EB_prior_fraction) ~
+    scenario + initialization,
+  data = credible_set_results,
+  FUN = mean
+)
+```
+
+```{r credible-set-plots}
+op = par(mfrow = c(1, 2), mar = c(7, 4, 3, 1))
+for (scenario in c("block", "tree")) {
+  tab = credible_set_results[credible_set_results$scenario == scenario, ]
+  boxplot(tab$purity ~ tab$initialization, ylim = c(0, 1),
+          ylab = "Minimum absolute correlation", xlab = "Initialization",
+          main = scenario, col = "gray85")
+  abline(h = primary_cutoff, lty = 3, col = "firebrick")
+}
+par(op)
+```
+
+The EB prior fractions verify that prior updates still occur. They are not used
+to retain, reject, or deduplicate credible sets.
+
+## Fit quality
+
+```{r fit-summary}
+fit_summary = do.call(rbind, lapply(
+  split(fit_results,
+        interaction(fit_results$scenario, fit_results$initialization,
+                    drop = TRUE)),
+  function(tab) {
+    data.frame(
+      scenario = tab$scenario[1],
+      initialization = tab$initialization[1],
+      n_seed = nrow(tab),
+      cluster_accuracy_mean = mean(tab$cluster_accuracy),
+      cluster_accuracy_sd = sd(tab$cluster_accuracy),
+      mean_factor_cosine_mean = mean(tab$mean_factor_cosine),
+      mean_factor_cosine_sd = sd(tab$mean_factor_cosine),
+      mean_max_responsibility = mean(tab$mean_max_responsibility)
+    )
+  }
+))
+fit_summary[, vapply(fit_summary, is.numeric, logical(1))] = round(
+  fit_summary[, vapply(fit_summary, is.numeric, logical(1))], 4
+)
+fit_summary
+```
+
+## Observed results
+
+At the primary purity cutoff 0.5, repeated-surplus initialization gives the
+strongest block result. It selects the exact motif dimension in
+`r sprintf("%.1f", 100 * primary_summary$exact_D_mean[primary_summary$scenario == "block" & primary_summary$initialization == "repeat"])`%
+of motifs, with dimension MAE
+`r sprintf("%.3f", primary_summary$D_mae_mean[primary_summary$scenario == "block" & primary_summary$initialization == "repeat"])`.
+The top factors of the selected credible sets recover the exact motif support
+in the same fraction of cases, with mean support Jaccard
+`r sprintf("%.3f", primary_summary$top_factor_jaccard_mean[primary_summary$scenario == "block" & primary_summary$initialization == "repeat"])`.
+Diffuse-surplus initialization gives lower block dimension recovery of
+`r sprintf("%.1f", 100 * primary_summary$exact_D_mean[primary_summary$scenario == "block" & primary_summary$initialization == "uniform"])`%.
+
+The tree/no-anchor result remains difficult. Exact dimension recovery is
+`r sprintf("%.1f", 100 * primary_summary$exact_D_mean[primary_summary$scenario == "tree" & primary_summary$initialization == "repeat"])`%
+under repeated surplus and
+`r sprintf("%.1f", 100 * primary_summary$exact_D_mean[primary_summary$scenario == "tree" & primary_summary$initialization == "uniform"])`%
+under diffuse surplus. Their dimension MAEs are
+`r sprintf("%.3f", primary_summary$D_mae_mean[primary_summary$scenario == "tree" & primary_summary$initialization == "repeat"])`
+and
+`r sprintf("%.3f", primary_summary$D_mae_mean[primary_summary$scenario == "tree" & primary_summary$initialization == "uniform"])`,
+respectively. Exact top-factor support recovery is only
+`r sprintf("%.1f", 100 * primary_summary$exact_top_factor_support_mean[primary_summary$scenario == "tree" & primary_summary$initialization == "repeat"])`%
+and
+`r sprintf("%.1f", 100 * primary_summary$exact_top_factor_support_mean[primary_summary$scenario == "tree" & primary_summary$initialization == "uniform"])`%.
+
+The purity cutoff is not the main source of this failure. Results are nearly
+unchanged between cutoffs 0.25 and 0.9. With repeated initialization, every
+credible set is a singleton and therefore has purity one; exact duplicate
+removal collapses many of them but cannot reject a distinct incorrect
+singleton. With diffuse initialization, approximately
+`r sprintf("%.1f", 100 * mean(credible_set_results$credible_set_size[credible_set_results$scenario == "tree" & credible_set_results$initialization == "uniform"] == 1))`%
+of tree credible sets are still singletons. Consequently, most surplus
+dimensions also pass the purity filter.
+
+The tree fits are not globally degenerate: mean clustering accuracy is
+`r sprintf("%.3f", mean(fit_results$cluster_accuracy[fit_results$scenario == "tree"]))`
+and mean factor cosine is
+`r sprintf("%.3f", mean(fit_results$mean_factor_cosine[fit_results$scenario == "tree"]))`.
+Rather, the model can fit useful motifs while assigning some surplus dimensions
+to confident singleton credible sets.
+
+The corrected conclusion is therefore that SuSiE credible-set purity and
+duplicate removal work well for the block scenario but are not sufficient for
+motif-specific dimension selection in the tree scenario. Purity answers
+whether a credible set contains mutually similar factor alternatives; it does
+not answer whether a pure singleton dimension has meaningful loading activity.
+The EB updates remained active throughout but did not enter this selection
+rule, as intended.
+
+## Interpretation guide
+
+Exact dimension recovery is the primary model-selection metric. Exact
+top-factor support additionally asks whether the most probable factor in each
+selected credible set recovers the motif support after factor matching.
+Credible-set true-factor coverage is less strict: it asks whether each true
+factor appears anywhere in at least one selected credible set. Union precision
+penalizes credible sets that contain unrelated factors.
+
+The repeated-surplus comparison tests whether SuSiE-style duplicate removal
+collapses repeated dimensions. The diffuse-surplus comparison tests whether
+unused dimensions form broad, low-purity credible sets and are filtered out.
+The threshold sensitivity analysis indicates whether conclusions depend on the
+standard 0.5 minimum-correlation cutoff.

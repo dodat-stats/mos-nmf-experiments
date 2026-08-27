@@ -41,7 +41,8 @@ support_label <- function(support) paste(sort(unique(support)), collapse = ",")
 
 simulate_support_scenario <- function(N, M, K, group_supports, shape_vec,
                                       factor_shape = 0.1,
-                                      factor_rate = 0.01, seed = 1) {
+                                      factor_rate = 0.01, seed = 1,
+                                      train_fraction = NULL) {
   set.seed(seed)
   S = length(group_supports)
   n_per_group = N / S
@@ -62,10 +63,24 @@ simulate_support_scenario <- function(N, M, K, group_supports, shape_vec,
     )
   }
 
-  Y = matrix(rpois(N * M, L %*% F0), nrow = N, ncol = M)
+  Y_full = matrix(rpois(N * M, L %*% F0), nrow = N, ncol = M)
+  if (is.null(train_fraction)) {
+    Y = Y_full
+    Y_test = NULL
+  } else {
+    if (train_fraction <= 0 || train_fraction >= 1) {
+      stop("train_fraction must be strictly between zero and one")
+    }
+    Y = matrix(rbinom(N * M, as.vector(Y_full), train_fraction),
+               nrow = N, ncol = M)
+    Y_test = Y_full - Y
+  }
 
   list(
     Y = Y,
+    Y_test = Y_test,
+    Y_full = Y_full,
+    train_fraction = train_fraction,
     F0 = F0,
     L = L,
     grp = grp,
@@ -76,6 +91,56 @@ simulate_support_scenario <- function(N, M, K, group_supports, shape_vec,
     }),
     true_patterns = vapply(group_supports, support_label, character(1))
   )
+}
+
+poisson_deviance <- function(Y, mu, eps = 1e-12) {
+  mu = pmax(mu, eps)
+  positive = Y > 0
+  terms = mu - Y
+  terms[positive] = terms[positive] +
+    Y[positive] * log(Y[positive] / mu[positive])
+  2 * sum(terms)
+}
+
+heldout_prediction_metrics <- function(dat, fitted_train_mean,
+                                       eps = 1e-12) {
+  if (is.null(dat$Y_test) || is.null(dat$train_fraction)) {
+    return(data.frame(
+      heldout_deviance_per_entry = NA_real_,
+      heldout_mean_log_score = NA_real_
+    ))
+  }
+
+  test_scale = (1 - dat$train_fraction) / dat$train_fraction
+  fitted_test_mean = pmax(test_scale * fitted_train_mean, eps)
+  data.frame(
+    heldout_deviance_per_entry =
+      poisson_deviance(dat$Y_test, fitted_test_mean, eps) / length(dat$Y_test),
+    heldout_mean_log_score =
+      mean(dpois(dat$Y_test, lambda = fitted_test_mean, log = TRUE))
+  )
+}
+
+mf_fitted_mean <- function(fit) {
+  loading_scores_from_mf(fit) %*% fit$F
+}
+
+mos_observation_factor_scores <- function(fit) {
+  N = nrow(fit$omega)
+  S = ncol(fit$omega)
+  D = dim(fit$gamma_bar)[2]
+  K = dim(fit$gamma_bar)[3]
+  scores = matrix(0, N, K)
+  slot_scale = if (is.null(fit$slot_scale)) matrix(1, S, D) else fit$slot_scale
+
+  for (s in seq_len(S)) {
+    for (d in seq_len(D)) {
+      expected_loading = fit$omega[, s] *
+        fit$alpha[, s, d] / fit$lambda_sd[s, d] * slot_scale[s, d]
+      scores = scores + expected_loading %o% fit$gamma_bar[s, d, ]
+    }
+  }
+  scores
 }
 
 normalize_scores <- function(scores, eps = 1e-12) {
@@ -112,6 +177,41 @@ support_accuracy <- function(scores, learned_to_true, dat) {
          dat$true_support_label)
 }
 
+support_jaccard <- function(scores, learned_to_true, dat) {
+  scores_true = map_scores_to_true(scores, learned_to_true)
+  mean(vapply(seq_len(nrow(scores_true)), function(i) {
+    estimated = order(scores_true[i, ], decreasing = TRUE)[
+      seq_len(dat$true_support_size[i])
+    ]
+    truth = which(dat$L[i, ] > 0)
+    length(intersect(estimated, truth)) / length(union(estimated, truth))
+  }, numeric(1)))
+}
+
+soft_cluster_accuracy <- function(omega, z_true) {
+  z_true = as.integer(as.factor(z_true))
+  S_fit = ncol(omega)
+  S_true = max(z_true)
+  score = matrix(0, nrow = S_fit, ncol = S_true)
+  for (s in seq_len(S_true)) {
+    score[, s] = colSums(omega[z_true == s, , drop = FALSE])
+  }
+
+  if (S_fit != S_true) {
+    stop("soft_cluster_accuracy currently requires the fitted and true motif counts to match")
+  }
+  if (requireNamespace("clue", quietly = TRUE)) {
+    assignment = clue::solve_LSAP(max(score) - score)
+    matched_mass = sum(score[cbind(seq_len(S_fit), assignment)])
+  } else {
+    perms = all_permutations(seq_len(S_true))
+    matched_mass = max(apply(perms, 1, function(p) {
+      sum(score[cbind(seq_len(S_fit), p)])
+    }))
+  }
+  matched_mass / nrow(omega)
+}
+
 gamma_uncertainty_summary <- function(gamma_bar) {
   ent = motif_gamma_entropy(gamma_bar)
   top = apply(gamma_bar, c(1, 2), max)
@@ -143,13 +243,17 @@ fit_nmf_baseline <- function(dat, K, S, seed, nmf_iters = 60) {
     data.frame(
       method = "Poisson NMF + kmeans",
       cluster_accuracy = cluster_accuracy(z_hat, dat$grp),
+      soft_cluster_accuracy = NA_real_,
       support_accuracy = support_accuracy(scores, factor_match$learned_to_true,
                                           dat),
+      support_jaccard = support_jaccard(scores, factor_match$learned_to_true,
+                                        dat),
       mean_factor_cosine = mean(factor_match$table$cosine),
       min_factor_cosine = min(factor_match$table$cosine),
       mean_max_responsibility = NA_real_
     ),
-    empty_uncertainty_summary()
+    empty_uncertainty_summary(),
+    heldout_prediction_metrics(dat, nmf_fit$L %*% nmf_fit$F)
   )
 }
 
@@ -179,21 +283,25 @@ fit_mf_baseline <- function(dat, K, S, D, seed, max_iters = 25,
     data.frame(
       method = "MF-Poisson-SuSiE + kmeans",
       cluster_accuracy = cluster_accuracy(z_hat, dat$grp),
+      soft_cluster_accuracy = NA_real_,
       support_accuracy = support_accuracy(scores, factor_match$learned_to_true,
                                           dat),
+      support_jaccard = support_jaccard(scores, factor_match$learned_to_true,
+                                        dat),
       mean_factor_cosine = mean(factor_match$table$cosine),
       min_factor_cosine = min(factor_match$table$cosine),
       mean_max_responsibility = NA_real_
     ),
-    empty_uncertainty_summary()
+    empty_uncertainty_summary(),
+    heldout_prediction_metrics(dat, mf_fitted_mean(mf_fit))
   )
 }
 
-fit_soft_mos_method <- function(dat, K, S, D, seed, max_iters = 12,
-                                n_inner = 3, mf_max_iters = 25,
-                                mf_nmf_iters = 50, block_size = 100,
-                                surplus_slots = "repeat",
-                                update_slot_scale = FALSE) {
+fit_mos_method <- function(dat, K, S, D, seed, max_iters = 12,
+                           n_inner = 3, mf_max_iters = 25,
+                           mf_nmf_iters = 50, block_size = 100,
+                           surplus_slots = "repeat",
+                           update_slot_scale = FALSE) {
   fit = mos_nmf(
     Y = dat$Y,
     K = K,
@@ -226,15 +334,22 @@ fit_soft_mos_method <- function(dat, K, S, D, seed, max_iters = 12,
 
   cbind(
     data.frame(
-      method = "Soft MoS-NMF",
+      method = "MoS-NMF",
       cluster_accuracy = cluster_accuracy(fit$z_hat, dat$grp),
+      soft_cluster_accuracy = soft_cluster_accuracy(fit$omega, dat$grp),
       support_accuracy = support_accuracy(scores, factor_match$learned_to_true,
                                           dat),
+      support_jaccard = support_jaccard(scores, factor_match$learned_to_true,
+                                        dat),
       mean_factor_cosine = mean(factor_match$table$cosine),
       min_factor_cosine = min(factor_match$table$cosine),
       mean_max_responsibility = mean(apply(fit$omega, 1, max))
     ),
-    uncertainty
+    uncertainty,
+    heldout_prediction_metrics(
+      dat,
+      mos_observation_factor_scores(fit) %*% fit$F
+    )
   )
 }
 
@@ -250,18 +365,20 @@ run_one_benchmark <- function(dat, K, S, D, seed,
                      nmf_iters = nmf_iters),
     fit_mf_baseline(dat, K = K, S = S, D = D, seed = seed,
                     max_iters = mf_max_iters, nmf_iters = mf_nmf_iters),
-    fit_soft_mos_method(dat, K = K, S = S, D = D, seed = seed,
-                        max_iters = mos_max_iters, n_inner = mos_n_inner,
-                        mf_max_iters = mf_max_iters,
-                        mf_nmf_iters = mf_nmf_iters,
-                        block_size = block_size)
+    fit_mos_method(dat, K = K, S = S, D = D, seed = seed,
+                   max_iters = mos_max_iters, n_inner = mos_n_inner,
+                   mf_max_iters = mf_max_iters,
+                   mf_nmf_iters = mf_nmf_iters,
+                   block_size = block_size)
   )
 }
 
 summarize_benchmark_results <- function(results) {
-  metrics = c("cluster_accuracy", "support_accuracy", "mean_factor_cosine",
+  metrics = c("cluster_accuracy", "soft_cluster_accuracy",
+              "support_accuracy", "support_jaccard", "mean_factor_cosine",
               "min_factor_cosine", "mean_max_responsibility",
-              "mean_gamma_entropy")
+              "mean_gamma_entropy", "heldout_deviance_per_entry",
+              "heldout_mean_log_score")
   mean_or_na = function(x) {
     if (all(is.na(x))) return(NA_real_)
     mean(x, na.rm = TRUE)

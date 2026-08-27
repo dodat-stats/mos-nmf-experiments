@@ -722,6 +722,90 @@ motif_gamma_entropy <- function(gamma_bar) {
   rowSums(entropy, dims = 2) / log(dim(gamma_bar)[3])
 }
 
+smallest_credible_set <- function(probability, coverage = 0.9,
+                                  eps = 1e-12) {
+  if (coverage <= 0 || coverage > 1) {
+    stop("coverage must be strictly positive and at most one")
+  }
+  probability = pmax(probability, 0)
+  probability = probability / pmax(sum(probability), eps)
+  order_probability = order(probability, decreasing = TRUE)
+  set_size = which(cumsum(probability[order_probability]) >= coverage)[1]
+  sort(order_probability[seq_len(set_size)])
+}
+
+credible_set_purity <- function(credible_set, factor_correlation) {
+  if (length(credible_set) <= 1) return(1)
+  correlation = abs(factor_correlation[credible_set, credible_set,
+                                       drop = FALSE])
+  pairwise = correlation[lower.tri(correlation)]
+  pairwise[is.na(pairwise)] = 0
+  min(pairwise)
+}
+
+motif_credible_sets <- function(fit, coverage = 0.9,
+                                min_abs_correlation = 0.5,
+                                deduplicate = TRUE, eps = 1e-12) {
+  if (min_abs_correlation < 0 || min_abs_correlation > 1) {
+    stop("min_abs_correlation must be between zero and one")
+  }
+
+  S = dim(fit$gamma_bar)[1]
+  D = dim(fit$gamma_bar)[2]
+  factor_correlation = stats::cor(t(fit$F))
+  dimensions = do.call(rbind, lapply(seq_len(S), function(s) {
+    do.call(rbind, lapply(seq_len(D), function(d) {
+      probability = fit$gamma_bar[s, d, ]
+      credible_set = smallest_credible_set(probability, coverage, eps)
+      data.frame(
+        motif = s,
+        dimension = d,
+        credible_set = paste(credible_set, collapse = ","),
+        credible_set_size = length(credible_set),
+        posterior_coverage = sum(probability[credible_set]),
+        purity = credible_set_purity(credible_set, factor_correlation),
+        top_factor = which.max(probability),
+        stringsAsFactors = FALSE
+      )
+    }))
+  }))
+  rownames(dimensions) = NULL
+  dimensions$retained = dimensions$purity >= min_abs_correlation
+  dimensions$selected = dimensions$retained
+
+  if (deduplicate) {
+    dimensions$selected = FALSE
+    for (s in seq_len(S)) {
+      retained_index = which(dimensions$motif == s & dimensions$retained)
+      if (length(retained_index) == 0) next
+      unique_index = retained_index[
+        !duplicated(dimensions$credible_set[retained_index])
+      ]
+      dimensions$selected[unique_index] = TRUE
+    }
+  }
+
+  selection = do.call(rbind, lapply(seq_len(S), function(s) {
+    selected = dimensions$motif == s & dimensions$selected
+    data.frame(
+      motif = s,
+      D_hat = sum(selected),
+      selected_credible_sets =
+        paste(dimensions$credible_set[selected], collapse = ";"),
+      stringsAsFactors = FALSE
+    )
+  }))
+  rownames(selection) = NULL
+
+  list(
+    dimensions = dimensions,
+    selection = selection,
+    factor_correlation = factor_correlation,
+    coverage = coverage,
+    min_abs_correlation = min_abs_correlation
+  )
+}
+
 motif_slot_activity <- function(fit, eps = 1e-12) {
   scores = motif_factor_scores(fit)
   beta_mean = scores$beta_mean

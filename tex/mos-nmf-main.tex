@@ -1,0 +1,650 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{booktabs}
+\usepackage{natbib}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Poi}{\mathrm{Poi}}
+\newcommand{\Gam}{\mathrm{Gam}}
+\newcommand{\Cat}{\mathrm{Cat}}
+\newcommand{\KL}{\mathrm{KL}}
+
+\theoremstyle{definition}
+\newtheorem{remark}{Remark}
+
+\title{Mixture-of-Submanifolds Nonnegative Matrix Factorization for Interpretable Sparse Loading Motifs}
+\author{TBD}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Nonnegative matrix factorization is widely used to represent a nonnegative data
+matrix as low-rank nonnegative factors and loadings. Many sparse variants of
+nonnegative matrix factorization encourage individual loading vectors to use
+only a small number of factors, but they usually do not model repeated sparsity
+patterns as inferential objects. We introduce mixture-of-submanifolds
+nonnegative matrix factorization, a probabilistic model for count data that
+learns recurring sparse loading motifs. Each observation is assigned, softly, to
+a latent motif. Each motif is represented by a small number of
+motif dimensions, and each dimension has a posterior distribution over the shared factor
+rows. This gives both clustering of observations by sparsity pattern and
+posterior uncertainty over the factors defining each motif. The method builds
+on a Poisson SuSiE model for one count vector and a matrix-factorization
+extension of Poisson SuSiE. We describe the model, a variational empirical-Bayes fitting
+procedure, and the simulation studies needed to evaluate factor recovery,
+motif recovery, overfitting behavior, and posterior uncertainty.
+\end{abstract}
+
+\section{Introduction}
+
+Nonnegative matrix factorization (NMF) seeks a low-rank representation of a
+nonnegative matrix $Y \in \N^{N \times M}$ by writing
+\[
+  Y \approx L F,
+\]
+where $L \in \R_+^{N \times K}$ contains nonnegative loadings and
+$F \in \R_+^{K \times M}$ contains nonnegative factors. In many scientific
+applications the rows of $L$ are expected to be sparse: each observation should
+be explained by only a few latent factors. Sparse NMF methods address this by
+regularizing or constraining the loading matrix. However, sparsity itself is not
+the whole inferential target. Often we want to know whether many observations
+share the same kind of sparsity pattern, which factors define that pattern, and
+whether the evidence distinguishes one possible factor combination from another.
+
+This paper develops MoS-NMF, a mixture-of-submanifolds model for sparse NMF
+loadings. The main idea is to treat recurring sparsity patterns as latent
+motifs. Each motif represents a small collection of factor
+rows that tend to appear together in the loadings. Observations are softly
+assigned to motifs, and each motif has posterior uncertainty over which factors
+define its dimensions. Thus the model is designed to answer questions such as:
+Which sparsity motifs are present? Which observations use each motif? Which
+factors define a motif? Are two nearly identical or correlated factors
+interchangeable in the posterior?
+
+The statistical challenge is that sparse NMF has several sources of
+non-identifiability. Factor rows can be permuted, highly correlated factors can
+compete to explain the same counts, and an overfitted factorization can produce
+duplicate or redundant factors. A hard sparse loading estimate can hide this
+ambiguity by choosing one arbitrary support. We instead represent uncertainty
+with posterior probabilities over factor identities, following the spirit of
+SuSiE \citep{Wang2020-cr}. The resulting posterior summaries are analogous to
+posterior inclusion probabilities, but they operate at the motif level rather
+than only at the observation level.
+
+The paper has three methodological layers. Section~\ref{sec:pois-susie}
+introduces Poisson SuSiE for one count vector and MF-Poisson-SuSiE for a count
+matrix. Section~\ref{sec:mos-nmf} introduces MoS-NMF, which pools sparse loading
+patterns across observations through latent motifs. Section~\ref{sec:identifiability}
+is reserved for identifiability theory. Section~\ref{sec:experiments} describes
+the experiments needed for a JMLR-quality empirical evaluation.
+
+\section{Poisson SuSiE and MF-Poisson-SuSiE}
+\label{sec:pois-susie}
+
+\subsection{Single-vector Poisson SuSiE}
+
+We begin with one count vector $y \in \N^M$ and a known nonnegative dictionary
+$F \in \R_+^{K \times M}$. Throughout this paper we use row-normalized factors,
+\[
+  F_{km} \geq 0,
+  \qquad
+  \sum_{m=1}^M F_{km}=1,
+  \qquad k=1,\ldots,K.
+\]
+Poisson SuSiE represents the Poisson mean as a sparse sum of $D$ loading
+dimensions:
+\[
+  y_m \mid \lambda,\gamma,F
+  \sim
+  \Poi(\mu_m),
+  \qquad
+  \mu_m =
+  \sum_{d=1}^D \lambda_d F_{\gamma_d m},
+  \qquad m=1,\ldots,M.
+\]
+For each dimension $d$,
+\[
+  \gamma_d \sim \Cat(1/K,\ldots,1/K),
+  \qquad
+  \lambda_d \mid \gamma_d \sim \Gam(\alpha_d^0,\beta_d^0),
+\]
+where the Gamma distribution is parameterized by shape and rate. The latent
+index $\gamma_d$ chooses one factor row, and $\lambda_d$ is the nonnegative
+loading size for dimension $d$.
+
+The variational approximation factorizes over dimensions:
+\[
+  q(\lambda,\gamma)
+  =
+  \prod_{d=1}^D q(\gamma_d)q(\lambda_d \mid \gamma_d),
+\]
+with
+\[
+  q(\gamma_d=k)=\bar{\gamma}_{dk},
+  \qquad
+  q(\lambda_d \mid \gamma_d=k)=\Gam(\alpha_{dk},\beta_{dk}).
+\]
+We also introduce allocation variables $\xi_{dm}$ satisfying
+$\xi_{dm}\geq 0$ and $\sum_{d=1}^D \xi_{dm}=1$ for each coordinate $m$. They
+allocate the observed count $y_m$ across the $D$ dimensions. Jensen's inequality
+gives the lower bound contribution
+\[
+  y_m \log\left(\sum_{d=1}^D \lambda_d F_{\gamma_d m}\right)
+  \geq
+  \sum_{d=1}^D
+  \xi_{dm}y_m
+  \log\left(\frac{\lambda_d F_{\gamma_d m}}{\xi_{dm}}\right).
+\]
+
+The resulting coordinate updates have a simple form. The allocation update is
+\[
+  \xi_{dm}
+  \propto
+  \exp\left[
+    \sum_{k=1}^K \bar{\gamma}_{dk}
+    \{\psi(\alpha_{dk})-\log\beta_{dk}\}
+    +
+    \sum_{k=1}^K \bar{\gamma}_{dk}\log F_{km}
+  \right],
+\]
+normalized over $d=1,\ldots,D$. The Gamma variational parameters are
+\[
+  \alpha_{dk}
+  \leftarrow
+  \alpha_d^0+\sum_{m=1}^M \xi_{dm}y_m,
+  \qquad
+  \beta_{dk}
+  \leftarrow
+  \beta_d^0+\sum_{m=1}^M F_{km}.
+\]
+The posterior probability that dimension $d$ uses factor $k$ is updated by a
+softmax over the terms in the lower bound depending on $\gamma_d=k$:
+\[
+  \bar{\gamma}_{dk}
+  \propto
+  \exp\left[
+    \sum_{m=1}^M \xi_{dm}y_m \log F_{km}
+    -
+    \left(\alpha_d^0+\sum_{m=1}^M \xi_{dm}y_m\right)
+    \log\left(\beta_d^0+\sum_{m=1}^M F_{km}\right)
+  \right].
+\]
+When the rows of $F$ are normalized, the rate term is constant across $k$, but
+we keep it visible because it clarifies the role of the Gamma prior and the
+scale convention.
+
+\subsection{Empirical-Bayes prior update}
+
+Poisson SuSiE can use empirical Bayes to update the prior mean of each loading
+dimension. For dimension $d$, define the posterior mean and posterior mean
+log-size
+\[
+  \sum_{k=1}^K \bar{\gamma}_{dk}\frac{\alpha_{dk}}{\beta_{dk}},
+  \qquad
+  \sum_{k=1}^K
+  \bar{\gamma}_{dk}\{\psi(\alpha_{dk})-\log\beta_{dk}\}.
+\]
+Maximizing the expected Gamma prior gives the rate update
+\[
+  \beta_d^0
+  =
+  \frac{\alpha_d^0}
+       {\sum_{k=1}^K \bar{\gamma}_{dk}\alpha_{dk}/\beta_{dk}},
+\]
+and $\alpha_d^0$ solves
+\[
+  \psi(\alpha_d^0)
+  =
+  \sum_{k=1}^K
+  \bar{\gamma}_{dk}\{\psi(\alpha_{dk})-\log\beta_{dk}\}
+  + \log\beta_d^0.
+\]
+This empirical-Bayes step is important when $D$ is overspecified: dimensions with
+little evidence can have prior mean $\alpha_d^0/\beta_d^0$ close to zero,
+which is an automatic relevance determination (ARD) mechanism for selecting the
+effective number of dimensions.
+
+\subsection{MF-Poisson-SuSiE}
+
+MF-Poisson-SuSiE applies the same sparse Poisson representation to each row of a
+count matrix while learning the shared factor matrix $F$. For observation
+$i=1,\ldots,N$,
+\[
+  Y_{im} \mid \lambda_i,\gamma_i,F
+  \sim
+  \Poi\left(
+    \sum_{d=1}^D \lambda_{id}F_{\gamma_{id}m}
+  \right),
+  \qquad m=1,\ldots,M.
+\]
+Each observation has its own sparse support indicators $\gamma_{id}$ and loading
+sizes $\lambda_{id}$. The variational posterior uses
+\[
+  q(\gamma_{id}=k)=\bar{\gamma}_{idk},
+  \qquad
+  q(\lambda_{id}\mid\gamma_{id}=k)
+  =
+  \Gam(\alpha_{idk},\beta_{idk}).
+\]
+
+For fixed $F$, the updates are the row-wise analogues of the single-vector
+updates. When $F$ is unknown, the factor update uses expected allocated counts:
+\[
+  A_{km}
+  =
+  \sum_{i=1}^N \sum_{d=1}^D
+  \bar{\gamma}_{idk}\xi_{idm}Y_{im}.
+\]
+With row-normalized factors,
+\[
+  F_{km}
+  \leftarrow
+  \frac{A_{km}+\epsilon}
+       {\sum_{m'=1}^M(A_{km'}+\epsilon)}.
+\]
+In practice the implementation initializes $F$ with Poisson NMF, initializes
+the sparse posterior from the corresponding loading estimates, and damps the
+updates of $\bar{\gamma}$ and $F$. This produces a useful intermediate model:
+it learns the factor dictionary and observation-level sparse loading
+uncertainty, but it does not yet pool recurring support patterns across
+observations. That pooling is the purpose of MoS-NMF.
+
+\section{MoS-NMF}
+\label{sec:mos-nmf}
+
+\subsection{Generative model}
+
+MoS-NMF models repeated sparse loading motifs. The observed data are counts
+$Y \in \N^{N \times M}$. The factor matrix
+$F \in \R_+^{K \times M}$ is row-normalized as above. There are $S$ latent
+motifs. We initially fit each motif with a
+nominal dimension $D$, but the effective dimension is allowed to be smaller and
+can vary by motif.
+
+For motif $s$ and dimension $d$, the factor identity is random:
+\[
+  \gamma_{sd}
+  \sim
+  \Cat(\rho_{sd1},\ldots,\rho_{sdK}).
+\]
+For observation $i$,
+\[
+  Z_i \sim \Cat(\pi_1,\ldots,\pi_S).
+\]
+Conditional on $Z_i=s$, the observation has one nonnegative loading size for
+each dimension:
+\[
+  \lambda_{id}\mid Z_i=s
+  \sim
+  \Gam(\alpha_{sd}^0,\beta_{sd}^0),
+  \qquad d=1,\ldots,D.
+\]
+The observed counts are
+\[
+  Y_{im}\mid Z_i=s,\lambda_i,\gamma,F
+  \sim
+  \Poi(\mu_{im}),
+  \qquad
+  \mu_{im} =
+  \sum_{d=1}^D \lambda_{id}F_{\gamma_{sd}m},
+  \qquad m=1,\ldots,M.
+\]
+Equivalently, if $L_i$ denotes the loading vector for observation $i$, then
+\[
+  L_i
+  =
+  \sum_{d=1}^D \lambda_{id} e_{\gamma_{Z_i d}},
+\]
+where $e_k$ is the $k$th coordinate vector in $\R^K$. Thus all observations
+assigned to motif $s$ share the same motif-level factor identities
+$\gamma_{s1},\ldots,\gamma_{sD}$, but each observation has its own loading
+sizes.
+
+\subsection{Variational family}
+
+The variational approximation is
+\[
+  q(Z,\gamma,\lambda)
+  =
+  \prod_{i=1}^N q(Z_i)
+  \prod_{s=1}^S\prod_{d=1}^D q(\gamma_{sd})
+  \prod_{i=1}^N\prod_{s=1}^S\prod_{d=1}^D
+  q(\lambda_{id}\mid Z_i=s).
+\]
+We write
+\[
+  q(Z_i=s)=\omega_{is},
+  \qquad
+  q(\gamma_{sd}=k)=\bar{\gamma}_{sdk},
+\]
+and
+\[
+  q(\lambda_{id}\mid Z_i=s)
+  =
+  \Gam(\alpha_{isd},\beta_{sd}).
+\]
+The rate parameter $\beta_{sd}$ does not depend on $i$ because the Poisson
+factor rows are shared and row-normalized; the shape parameter
+$\alpha_{isd}$ depends on the counts allocated from observation $i$.
+
+For each candidate motif $s$, we introduce allocation variables
+$\xi_{isdm}$ satisfying
+\[
+  \xi_{isdm}\geq 0,
+  \qquad
+  \sum_{d=1}^D \xi_{isdm}=1.
+\]
+They allocate $Y_{im}$ across the dimensions of motif $s$. The implementation
+computes $\xi_{isdm}$ in feature blocks rather than storing the full
+$N\times S\times D\times M$ tensor.
+
+\subsection{Coordinate updates}
+
+The allocation update is
+\[
+  \xi_{isdm}
+  \propto
+  \exp\left[
+    \psi(\alpha_{isd})-\log\beta_{sd}
+    +
+    \sum_{k=1}^K \bar{\gamma}_{sdk}\log F_{km}
+  \right],
+\]
+normalized over $d=1,\ldots,D$. The Gamma posterior update is
+\[
+  \alpha_{isd}
+  \leftarrow
+  \alpha_{sd}^0+\sum_{m=1}^M \xi_{isdm}Y_{im},
+\]
+and
+\[
+  \beta_{sd}
+  \leftarrow
+  \beta_{sd}^0
+  +
+  \sum_{m=1}^M\sum_{k=1}^K \bar{\gamma}_{sdk}F_{km}.
+\]
+The second term is equal to one when each row of $F$ is normalized, but we
+write the full expression to make the model dependence explicit.
+
+For motif dimension $(s,d)$, the posterior probability of factor $k$ is updated by
+\[
+  \bar{\gamma}_{sdk}
+  \propto
+  \rho_{sdk}
+  \exp\left[
+    \sum_{i=1}^N \omega_{is}
+    \left\{
+      \sum_{m=1}^M \xi_{isdm}Y_{im}\log F_{km}
+      -
+      \frac{\alpha_{isd}}{\beta_{sd}}\sum_{m=1}^M F_{km}
+    \right\}
+  \right].
+\]
+This is the central posterior uncertainty object in MoS-NMF. A concentrated
+vector $\bar{\gamma}_{sd1},\ldots,\bar{\gamma}_{sdK}$ means that motif dimension
+$(s,d)$ has a well-identified factor. A diffuse vector means that several
+factor rows are plausible explanations for the same motif dimension.
+
+The motif responsibility for observation $i$ is updated from the component
+lower bound for that observation under each motif:
+\[
+  \omega_{is}
+  \propto
+  \pi_s \exp\{\mathcal{L}_{is}\},
+\]
+where
+\begin{align*}
+  \mathcal{L}_{is}
+  &=
+  \sum_{d=1}^D\sum_{m=1}^M
+  \xi_{isdm}Y_{im}
+  \left\{
+    \psi(\alpha_{isd})-\log\beta_{sd}
+    +
+    \sum_{k=1}^K \bar{\gamma}_{sdk}\log F_{km}
+    -
+    \log \xi_{isdm}
+  \right\}
+  \\
+  &\quad
+  -
+  \sum_{d=1}^D\sum_{m=1}^M
+  \frac{\alpha_{isd}}{\beta_{sd}}
+  \sum_{k=1}^K \bar{\gamma}_{sdk}F_{km}
+  -
+  \sum_{d=1}^D
+  \KL\{\Gam(\alpha_{isd},\beta_{sd})
+  \,\|\,\Gam(\alpha_{sd}^0,\beta_{sd}^0)\}.
+\end{align*}
+The mixture weights are updated by
+\[
+  \pi_s \leftarrow \frac{1}{N}\sum_{i=1}^N \omega_{is}.
+\]
+
+\subsection{Learning the factors}
+
+When $F$ is unknown, MoS-NMF updates $F$ using the expected allocated counts
+\[
+  A_{km}
+  =
+  \sum_{i=1}^N\sum_{s=1}^S\sum_{d=1}^D
+  \omega_{is}\bar{\gamma}_{sdk}\xi_{isdm}Y_{im}.
+\]
+The row-normalized update is
+\[
+  F_{km}
+  \leftarrow
+  \frac{A_{km}+\epsilon}
+       {\sum_{m'=1}^M(A_{km'}+\epsilon)}.
+\]
+In the current implementation, $F$ is initialized by MF-Poisson-SuSiE with
+learned $F$, and the subsequent MoS-NMF updates alternate between motif
+responsibilities, motif posteriors, Gamma loading posteriors, empirical-Bayes
+prior updates, and optionally factor updates. This initialization is important
+because the full problem is highly nonconvex.
+
+\subsection{Empirical-Bayes dimension selection}
+
+Each fitted motif starts with the same nominal dimension $D$, but the effective
+dimension of motif $s$ can be smaller. MoS-NMF uses the empirical-Bayes Gamma
+prior parameters to diagnose dimension activity. For each motif $s$ and
+dimension $d$,
+the prior mean
+\[
+  \frac{\alpha_{sd}^0}{\beta_{sd}^0}
+\]
+estimates the loading size expected for that dimension. If this value is close to
+zero relative to the other dimensions in motif $s$, then dimension $d$ is effectively
+inactive. This gives an ARD-style selected dimension
+\[
+  \widehat{D}_s
+  =
+  \#\left\{
+    d:
+    \frac{\alpha_{sd}^0/\beta_{sd}^0}
+         {\sum_{d'=1}^D \alpha_{sd'}^0/\beta_{sd'}^0}
+    \geq \tau
+  \right\},
+\]
+for a threshold $\tau$.
+
+This ARD diagnostic should be interpreted separately from the entropy of
+$\bar{\gamma}_{sd1},\ldots,\bar{\gamma}_{sdK}$. The ARD prior mean asks whether
+a dimension carries loading mass. The entropy of $\bar{\gamma}_{sd}$ asks whether
+the factor identity of that dimension is uncertain. Both are useful: an
+inactive dimension should have small loading mass, while an active but
+ambiguous dimension may have large loading mass and diffuse posterior factor
+identity.
+
+\begin{algorithm}[t]
+\caption{MoS-NMF variational empirical-Bayes fitting}
+\small
+\begin{algorithmic}[1]
+\State Initialize $F$, typically using MF-Poisson-SuSiE with learned factors.
+\State Initialize $\omega_{is}$ by clustering preliminary loading scores.
+\State Initialize $\bar{\gamma}_{sdk}$ from cluster-level loading patterns.
+\State Initialize $\alpha_{isd}$, $\beta_{sd}$, $\pi_s$, and
+$(\alpha_{sd}^0,\beta_{sd}^0)$.
+\For{$t=1,\ldots,T$}
+  \State Update $\xi_{isdm}$ in feature blocks.
+  \State Update $\alpha_{isd}$ and $\beta_{sd}$.
+  \State Update $\omega_{is}$ and $\pi_s$.
+  \State Update $(\alpha_{sd}^0,\beta_{sd}^0)$ by empirical Bayes.
+  \State Update $\bar{\gamma}_{sdk}$ for each motif dimension.
+  \If{factor learning is enabled}
+    \State Update $F$ using expected allocated counts and row-normalize.
+  \EndIf
+  \State Monitor the variational objective or a scheduled approximation to it.
+\EndFor
+\State Report motif responsibilities $\omega$, motif posteriors
+$\bar{\gamma}$, selected dimensions $\widehat{D}_s$, and fitted factors $F$.
+\end{algorithmic}
+\end{algorithm}
+
+\section{Identifiability Theory}
+\label{sec:identifiability}
+
+This section will contain the identifiability theory. The theory should
+separate at least three issues:
+\begin{enumerate}
+  \item permutation and scaling conventions for the NMF factorization;
+  \item identifiability of motif supports given the factor matrix $F$;
+  \item identifiability of the mixture of sparse motifs when motifs share
+  factors or when no motif contains a single anchor factor.
+\end{enumerate}
+The empirical sections below are designed to stress these same issues before
+the theory is complete.
+
+\section{Experiments Needed for a JMLR-Quality Evaluation}
+\label{sec:experiments}
+
+The empirical goal is not only to show good reconstruction error. The paper
+needs to show that MoS-NMF recovers meaningful sparse motifs, clusters
+observations by motif, learns factors when $F$ is unknown, and quantifies
+uncertainty in settings where hard sparse supports are unstable.
+
+\subsection{Baselines}
+
+The main baselines should be:
+\begin{enumerate}
+  \item Poisson NMF followed by clustering of normalized loading scores;
+  \item MF-Poisson-SuSiE followed by clustering of posterior loading scores;
+  \item sparse NMF baselines with tuned sparsity penalties, if available;
+  \item ablations of MoS-NMF with fixed $F$, learned $F$, and different
+  initialization schemes.
+\end{enumerate}
+The first two baselines are already implemented in the current benchmark code.
+
+\subsection{Metrics}
+
+The simulation tables should include:
+\begin{enumerate}
+  \item factor recovery, measured by cosine matching between fitted rows of
+  $F$ and true rows of $F_0$;
+  \item motif clustering accuracy, measured by matching $\arg\max_s\omega_{is}$
+  to true groups;
+  \item support recovery, measured by converting posterior motif scores to
+  predicted active factors;
+  \item soft clustering diagnostics, based on group-level averages of
+  $\omega_{is}$ rather than only hard labels;
+  \item posterior uncertainty summaries for $\bar{\gamma}_{sd}$, including
+  entropy, top-two gaps, and targeted pairwise split metrics;
+  \item selected motif dimensions $\widehat{D}_s$ from the ARD prior means;
+  \item predictive fit, such as held-out Poisson log likelihood or deviance.
+\end{enumerate}
+
+\subsection{Core simulation settings}
+
+The current roadmap suggests the following simulation studies.
+
+\paragraph{Correctly specified block motifs.}
+Use correct $K$ and nominal $D$, with groups occupying simple single-factor and
+multi-factor supports. This verifies that the method can recover factors,
+clusters, and supports in a clean setting. Current evidence shows feasibility,
+but a larger seed grid is needed before claiming robust superiority over
+baselines.
+
+\paragraph{Tree/no-anchor motifs.}
+Use motifs such as $(1,2,3)$, $(1,2,4)$, $(1,5,6)$, $(1,5,7)$, $(1,2)$, and
+$(1,5)$, so that no group is explained by a single anchor factor. This is the
+strongest current positive setting: in a small multi-seed pilot, MoS-NMF has
+substantially better support recovery than the baseline pipelines.
+
+\paragraph{Overspecified $K$.}
+Generate data with $K$ true factors but fit with extra candidate factor rows,
+including near-duplicates of true factors. The key diagnostic is whether
+$\bar{\gamma}_{sd}$ splits posterior mass across duplicate rows when they are
+statistically interchangeable. Global entropy is not sufficient; the paper
+should report pair-specific posterior split metrics for the duplicated factors.
+
+\paragraph{Correlated factors.}
+Generate factor rows with controlled correlation strength. This tests whether
+MoS-NMF can express targeted ambiguity between correlated factors. The current
+evidence suggests that raw entropy can be misleading because weak dimensions may
+become globally diffuse. The JMLR version should sweep correlation strength and
+report targeted pair uncertainty, not only mean entropy.
+
+\paragraph{Overspecified $D$.}
+Fit each motif with a nominal dimension larger than the true motif dimension.
+The target behavior is that extra dimensions either have small ARD prior mean
+$\alpha_{sd}^0/\beta_{sd}^0$ or small posterior loading mass. The current
+single-seed evidence suggests that diffuse-surplus initialization helps, while
+repeated-surplus initialization duplicates active dimensions. A full paper needs
+multi-seed threshold sweeps for $\widehat{D}_s$ and comparisons against the
+true motif dimensions after matching fitted motifs to groups.
+
+\subsection{Real data}
+
+A JMLR-quality paper should include at least one real-data example where
+repeated sparse loading motifs have scientific meaning. The analysis should
+report the fitted factors, the motifs, motif-specific selected dimensions,
+sample responsibilities, and posterior uncertainty over ambiguous motif dimensions.
+The real-data example should be chosen so that the learned motifs can be
+interpreted externally, not only through reconstruction quality.
+
+\subsection{Ablations and robustness checks}
+
+The paper should include ablations for:
+\begin{enumerate}
+  \item fixed versus learned $F$;
+  \item initialization from Poisson NMF versus MF-Poisson-SuSiE;
+  \item sensitivity to the number of motifs $S$;
+  \item sensitivity to nominal $D$ and the ARD threshold $\tau$;
+  \item sensitivity to duplicate-factor and correlated-factor strength;
+  \item stability across random initializations.
+\end{enumerate}
+These experiments are needed to distinguish the proposed statistical model from
+an initialization artifact.
+
+\section{Discussion}
+
+MoS-NMF reframes sparse NMF as a motif discovery problem. Instead of estimating
+sparse loadings independently for each observation, it pools repeated sparsity
+patterns through latent motifs. The posterior motif probabilities
+$\bar{\gamma}_{sdk}$ provide an interpretable uncertainty summary over the
+factor identities defining each motif, while the responsibilities $\omega_{is}$
+cluster observations by motif. The empirical-Bayes prior means
+$\alpha_{sd}^0/\beta_{sd}^0$ provide a natural ARD-style diagnostic for the
+effective dimension of each motif.
+
+The current evidence supports the promise of this approach, especially in
+tree/no-anchor simulations and in overfitted-factor uncertainty diagnostics.
+The main open issues are stable dimension selection, broader multi-seed
+benchmarks, model-selection guidance for $K$, $S$, and $D$, and a real-data
+example with scientifically interpretable motifs.
+
+\bibliographystyle{plainnat}
+\bibliography{sparsity}
+
+\end{document}
