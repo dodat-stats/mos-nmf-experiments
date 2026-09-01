@@ -89,13 +89,13 @@ legend("topright", legend = paste("factor", plot_rows),
 
 ```{r fit}
 alpha0 = rep(1, D)
-lambda0 = rep(1, D)
+beta0 = rep(1, D)
 
-fit = poi_susie(
+fit = poisson_susie(
   y = y,
   F = F,
   alpha0 = alpha0,
-  lambda0 = lambda0,
+  beta0 = beta0,
   max_iters = 100,
   update_prior = TRUE,
   init_seed = 3,
@@ -134,13 +134,13 @@ data.frame(
 ```{r top-factors}
 top_factor = apply(fit$gamma_bar, 1, which.max)
 posterior_mass = apply(fit$gamma_bar, 1, max)
-estimated_beta = rowSums(fit$gamma_bar * fit$alpha / fit$lambda)
+estimated_lambda = rowSums(fit$gamma_bar * fit$alpha / fit$beta)
 
 data.frame(
   effect = seq_len(D),
   top_factor = top_factor,
   posterior_mass = round(posterior_mass, 3),
-  estimated_beta = round(estimated_beta, 3)
+  estimated_lambda = round(estimated_lambda, 3)
 )
 ```
 
@@ -166,11 +166,11 @@ other and the duplicate is reset to the uniform distribution. This is intended
 to discourage two effects from explaining the same factor.
 
 ```{r fit-break-symmetry}
-fit_break = poi_susie(
+fit_break = poisson_susie(
   y = y,
   F = F,
   alpha0 = alpha0,
-  lambda0 = lambda0,
+  beta0 = beta0,
   max_iters = 100,
   update_prior = TRUE,
   init_seed = 3,
@@ -195,14 +195,14 @@ round(fit_break$gamma_bar, 3)
 ```{r top-factors-break}
 top_factor_break = apply(fit_break$gamma_bar, 1, which.max)
 posterior_mass_break = apply(fit_break$gamma_bar, 1, max)
-estimated_beta_break = rowSums(fit_break$gamma_bar *
-                                 fit_break$alpha / fit_break$lambda)
+estimated_lambda_break = rowSums(fit_break$gamma_bar *
+                                 fit_break$alpha / fit_break$beta)
 
 data.frame(
   effect = seq_len(D),
   top_factor = top_factor_break,
   posterior_mass = round(posterior_mass_break, 3),
-  estimated_beta = round(estimated_beta_break, 3)
+  estimated_lambda = round(estimated_lambda_break, 3)
 )
 ```
 

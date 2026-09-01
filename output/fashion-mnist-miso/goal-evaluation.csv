@@ -1,0 +1,3 @@
+"representation","in_sample_deviance_per_pixel","nearest_centroid_accuracy","average_active_factors_per_image_90pct","average_submanifold_dimension_90pct"
+"Vanilla Poisson NMF",1.43959468852755,0.673333333333333,5.788,NA
+"MiSo",1.82317150362812,0.648888888888889,1.742,1.83333333333333

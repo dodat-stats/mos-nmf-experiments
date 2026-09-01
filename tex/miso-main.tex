@@ -1,0 +1,1063 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{booktabs}
+\usepackage{natbib}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Poi}{\mathrm{Poi}}
+\newcommand{\Gam}{\mathrm{Gam}}
+\newcommand{\Cat}{\mathrm{Cat}}
+\newcommand{\KL}{\mathrm{KL}}
+\newcommand{\MiSo}{\operatorname{MiSo}}
+\newcommand{\cone}{\operatorname{cone}}
+\newcommand{\one}{\mathbf{1}}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{remark}{Remark}
+
+\title{MiSo: Mixture-of-Submanifolds Nonnegative Matrix Factorization for Interpretable Factor-Usage Motifs}
+\author{Dat Do}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Nonnegative matrix factorization is widely used to represent a nonnegative data
+matrix through low-rank nonnegative factors and loadings. Many variants
+encourage individual observations to use only a small number of factors, but
+they usually do not model recurring patterns of factor usage as inferential
+objects. We introduce MiSo (Mixture of Submanifolds), a probabilistic model for
+count data that learns recurring factor-usage motifs. Each observation is
+assigned softly to a latent motif, and each motif defines a low-dimensional
+submanifold spanned by a small subset of shared factor rows. The factor rows
+themselves may be dense. Each motif dimension has a posterior distribution over
+the shared factor rows, giving both clustering by factor-usage motif and
+posterior uncertainty over the factors defining each motif. The method builds
+on a Poisson SuSiE model for one count vector and a matrix-factorization
+extension of Poisson SuSiE. We describe the model, a variational empirical-Bayes fitting
+procedure, and the simulation studies needed to evaluate factor recovery,
+motif recovery, overfitting behavior, and posterior uncertainty.
+\end{abstract}
+
+\section{Introduction}
+
+Nonnegative matrix factorization (NMF) seeks a low-rank representation of a
+nonnegative matrix $Y \in \N^{N \times M}$ by writing
+\[
+  Y \approx L F,
+\]
+where $L \in \R_+^{N \times K}$ contains nonnegative loadings and
+$F \in \R_+^{K \times M}$ contains nonnegative factors. In many scientific
+applications the rows of $L$ are expected to be sparse: each observation should
+be explained by only a few latent factors. Sparse NMF methods address this by
+regularizing or constraining the loading matrix. However, sparsity itself is not
+the whole inferential target. Often we want to know whether many observations
+share the same kind of sparsity pattern, which factors define that pattern, and
+whether the evidence distinguishes one possible factor combination from another.
+
+This paper develops MiSo, a mixture-of-submanifolds model for nonnegative count
+matrix factorization. The main idea is to treat recurring factor-usage patterns
+as latent motifs. Each motif represents a small collection of factor
+rows that tend to appear together in the loadings. Observations are softly
+assigned to motifs, and each motif has posterior uncertainty over which factors
+define its dimensions. Thus the model is designed to answer questions such as:
+Which factor-usage motifs are present? Which observations use each motif? Which
+factors define a motif? Are two nearly identical or correlated factors
+interchangeable in the posterior?
+
+The statistical challenge is that sparse NMF has several sources of
+non-identifiability. Factor rows can be permuted, highly correlated factors can
+compete to explain the same counts, and an overfitted factorization can produce
+duplicate or redundant factors. A hard sparse loading estimate can hide this
+ambiguity by choosing one arbitrary support. We instead represent uncertainty
+with posterior probabilities over factor identities, following the spirit of
+SuSiE \citep{Wang2020-cr}. The resulting posterior summaries are analogous to
+posterior inclusion probabilities, but they operate at the motif level rather
+than only at the observation level.
+
+The paper has three methodological layers. Section~\ref{sec:pois-susie}
+introduces Poisson SuSiE for one count vector and MF-Poisson-SuSiE for a count
+matrix. Section~\ref{sec:miso} introduces MiSo, which pools factor-usage
+patterns across observations through latent motifs. Section~\ref{sec:identifiability}
+is reserved for identifiability theory. Section~\ref{sec:experiments} describes
+the experiments needed.
+
+\section{Poisson SuSiE and MF-Poisson-SuSiE}
+\label{sec:pois-susie}
+
+\subsection{Single-vector Poisson SuSiE}
+
+We begin with one count vector $y \in \N^M$ and a known nonnegative dictionary
+$F \in \R_+^{K \times M}$. Throughout this paper we use row-normalized factors,
+\[
+  F_{km} \geq 0,
+  \qquad
+  \sum_{m=1}^M F_{km}=1,
+  \qquad k=1,\ldots,K.
+\]
+Poisson SuSiE represents the Poisson mean as a sparse sum of $D$ loading
+dimensions:
+\[
+  y_m \mid \lambda,\gamma,F
+  \sim
+  \Poi(\mu_m),
+  \qquad
+  \mu_m =
+  \sum_{d=1}^D \lambda_d F_{\gamma_d m},
+  \qquad m=1,\ldots,M.
+\]
+For each dimension $d$,
+\[
+  \gamma_d \sim \Cat(1/K,\ldots,1/K),
+  \qquad
+  \lambda_d \mid \gamma_d \sim \Gam(\alpha_d^0,\beta_d^0),
+\]
+where the Gamma distribution is parameterized by shape and rate. The latent
+index $\gamma_d$ chooses one factor row, and $\lambda_d$ is the nonnegative
+loading size for dimension $d$.
+
+The variational approximation factorizes over dimensions:
+\[
+  q(\lambda,\gamma)
+  =
+  \prod_{d=1}^D q(\gamma_d)q(\lambda_d \mid \gamma_d),
+\]
+with
+\[
+  q(\gamma_d=k)=\bar{\gamma}_{dk},
+  \qquad
+  q(\lambda_d \mid \gamma_d=k)=\Gam(\alpha_{dk},\beta_{dk}).
+\]
+We also introduce allocation variables $\xi_{dm}$ satisfying
+$\xi_{dm}\geq 0$ and $\sum_{d=1}^D \xi_{dm}=1$ for each coordinate $m$. They
+allocate the observed count $y_m$ across the $D$ dimensions. Jensen's inequality
+gives the lower bound contribution
+\[
+  y_m \log\left(\sum_{d=1}^D \lambda_d F_{\gamma_d m}\right)
+  \geq
+  \sum_{d=1}^D
+  \xi_{dm}y_m
+  \log\left(\frac{\lambda_d F_{\gamma_d m}}{\xi_{dm}}\right).
+\]
+
+The resulting coordinate updates have a simple form. The allocation update is
+\[
+  \xi_{dm}
+  \propto
+  \exp\left[
+    \sum_{k=1}^K \bar{\gamma}_{dk}
+    \{\psi(\alpha_{dk})-\log\beta_{dk}\}
+    +
+    \sum_{k=1}^K \bar{\gamma}_{dk}\log F_{km}
+  \right],
+\]
+normalized over $d=1,\ldots,D$. The Gamma variational parameters are
+\[
+  \alpha_{dk}
+  \leftarrow
+  \alpha_d^0+\sum_{m=1}^M \xi_{dm}y_m,
+  \qquad
+  \beta_{dk}
+  \leftarrow
+  \beta_d^0+\sum_{m=1}^M F_{km}.
+\]
+The posterior probability that dimension $d$ uses factor $k$ is updated by a
+softmax over the terms in the lower bound depending on $\gamma_d=k$:
+\[
+  \bar{\gamma}_{dk}
+  \propto
+  \exp\left[
+    \sum_{m=1}^M \xi_{dm}y_m \log F_{km}
+    -
+    \left(\alpha_d^0+\sum_{m=1}^M \xi_{dm}y_m\right)
+    \log\left(\beta_d^0+\sum_{m=1}^M F_{km}\right)
+  \right].
+\]
+When the rows of $F$ are normalized, the rate term is constant across $k$, but
+we keep it visible because it clarifies the role of the Gamma prior and the
+scale convention.
+
+\subsection{Empirical-Bayes prior update}
+
+Poisson SuSiE can use empirical Bayes to update the prior mean of each loading
+dimension. For dimension $d$, define the posterior mean and posterior mean
+log-size
+\[
+  \sum_{k=1}^K \bar{\gamma}_{dk}\frac{\alpha_{dk}}{\beta_{dk}},
+  \qquad
+  \sum_{k=1}^K
+  \bar{\gamma}_{dk}\{\psi(\alpha_{dk})-\log\beta_{dk}\}.
+\]
+Maximizing the expected Gamma prior gives the rate update
+\[
+  \beta_d^0
+  =
+  \frac{\alpha_d^0}
+       {\sum_{k=1}^K \bar{\gamma}_{dk}\alpha_{dk}/\beta_{dk}},
+\]
+and $\alpha_d^0$ solves
+\[
+  \psi(\alpha_d^0)
+  =
+  \sum_{k=1}^K
+  \bar{\gamma}_{dk}\{\psi(\alpha_{dk})-\log\beta_{dk}\}
+  + \log\beta_d^0.
+\]
+This empirical-Bayes step is important when $D$ is overspecified: dimensions with
+little evidence can have prior mean $\alpha_d^0/\beta_d^0$ close to zero,
+which is an automatic relevance determination (ARD) mechanism for selecting the
+effective number of dimensions.
+
+\subsection{MF-Poisson-SuSiE}
+
+MF-Poisson-SuSiE applies the same sparse Poisson representation to each row of a
+count matrix while learning the shared factor matrix $F$. For observation
+$i=1,\ldots,N$,
+\[
+  Y_{im} \mid \lambda_i,\gamma_i,F
+  \sim
+  \Poi\left(
+    \sum_{d=1}^D \lambda_{id}F_{\gamma_{id}m}
+  \right),
+  \qquad m=1,\ldots,M.
+\]
+Each observation has its own sparse support indicators $\gamma_{id}$ and loading
+sizes $\lambda_{id}$. The variational posterior uses
+\[
+  q(\gamma_{id}=k)=\bar{\gamma}_{idk},
+  \qquad
+  q(\lambda_{id}\mid\gamma_{id}=k)
+  =
+  \Gam(\alpha_{idk},\beta_{idk}).
+\]
+
+For fixed $F$, the updates are the row-wise analogues of the single-vector
+updates. When $F$ is unknown, the factor update uses expected allocated counts:
+\[
+  A_{km}
+  =
+  \sum_{i=1}^N \sum_{d=1}^D
+  \bar{\gamma}_{idk}\xi_{idm}Y_{im}.
+\]
+With row-normalized factors,
+\[
+  F_{km}
+  \leftarrow
+  \frac{A_{km}+\epsilon}
+       {\sum_{m'=1}^M(A_{km'}+\epsilon)}.
+\]
+In practice the implementation initializes $F$ with Poisson NMF, initializes
+the sparse posterior from the corresponding loading estimates, and damps the
+updates of $\bar{\gamma}$ and $F$. This produces a useful intermediate model:
+it learns the factor dictionary and observation-level sparse loading
+uncertainty, but it does not yet pool recurring support patterns across
+observations. That pooling is the purpose of MiSo.
+
+\section{MiSo}
+\label{sec:miso}
+
+\subsection{Generative model}
+
+MiSo models repeated factor-usage motifs. The observed data are counts
+$Y \in \N^{N \times M}$. The potentially dense factor matrix
+$F \in \R_+^{K \times M}$ is row-normalized as above. Each motif identifies a
+low-dimensional submanifold spanned by a subset of these shared factor rows;
+the model does not impose sparsity on $F$. There are $S$ latent motifs. We
+initially fit each motif with a
+nominal dimension $D$, but the effective dimension is allowed to be smaller and
+can vary by motif.
+
+For motif $s$ and dimension $d$, the factor identity is random:
+\[
+  \gamma_{sd}
+  \sim
+  \Cat(\rho_{sd1},\ldots,\rho_{sdK}).
+\]
+For observation $i$,
+\[
+  Z_i \sim \Cat(\pi_1,\ldots,\pi_S).
+\]
+Conditional on $Z_i=s$, the observation has one nonnegative loading size for
+each dimension:
+\[
+  \lambda_{id}\mid Z_i=s
+  \sim
+  \Gam(\alpha_{sd}^0,\beta_{sd}^0),
+  \qquad d=1,\ldots,D.
+\]
+The observed counts are
+\[
+  Y_{im}\mid Z_i=s,\lambda_i,\gamma,F
+  \sim
+  \Poi(\mu_{im}),
+  \qquad
+  \mu_{im} =
+  \sum_{d=1}^D \lambda_{id}F_{\gamma_{sd}m},
+  \qquad m=1,\ldots,M.
+\]
+Equivalently, if $L_i$ denotes the loading vector for observation $i$, then
+\[
+  L_i
+  =
+  \sum_{d=1}^D \lambda_{id} e_{\gamma_{Z_i d}},
+\]
+where $e_k$ is the $k$th coordinate vector in $\R^K$. Thus all observations
+assigned to motif $s$ share the same motif-level factor identities
+$\gamma_{s1},\ldots,\gamma_{sD}$, but each observation has its own loading
+sizes.
+
+\subsection{Variational family}
+
+The variational approximation is
+\[
+  q(Z,\gamma,\lambda)
+  =
+  \prod_{i=1}^N q(Z_i)
+  \prod_{s=1}^S\prod_{d=1}^D q(\gamma_{sd})
+  \prod_{i=1}^N\prod_{s=1}^S\prod_{d=1}^D
+  q(\lambda_{id}\mid Z_i=s).
+\]
+We write
+\[
+  q(Z_i=s)=\omega_{is},
+  \qquad
+  q(\gamma_{sd}=k)=\bar{\gamma}_{sdk},
+\]
+and
+\[
+  q(\lambda_{id}\mid Z_i=s)
+  =
+  \Gam(\alpha_{isd},\beta_{sd}).
+\]
+The rate parameter $\beta_{sd}$ does not depend on $i$ because the Poisson
+factor rows are shared and row-normalized; the shape parameter
+$\alpha_{isd}$ depends on the counts allocated from observation $i$.
+
+For each candidate motif $s$, we introduce allocation variables
+$\xi_{isdm}$ satisfying
+\[
+  \xi_{isdm}\geq 0,
+  \qquad
+  \sum_{d=1}^D \xi_{isdm}=1.
+\]
+They allocate $Y_{im}$ across the dimensions of motif $s$. The implementation
+computes $\xi_{isdm}$ in feature blocks rather than storing the full
+$N\times S\times D\times M$ tensor.
+
+\subsection{Coordinate updates}
+
+The allocation update is
+\[
+  \xi_{isdm}
+  \propto
+  \exp\left[
+    \psi(\alpha_{isd})-\log\beta_{sd}
+    +
+    \sum_{k=1}^K \bar{\gamma}_{sdk}\log F_{km}
+  \right],
+\]
+normalized over $d=1,\ldots,D$. The Gamma posterior update is
+\[
+  \alpha_{isd}
+  \leftarrow
+  \alpha_{sd}^0+\sum_{m=1}^M \xi_{isdm}Y_{im},
+\]
+and
+\[
+  \beta_{sd}
+  \leftarrow
+  \beta_{sd}^0
+  +
+  \sum_{m=1}^M\sum_{k=1}^K \bar{\gamma}_{sdk}F_{km}.
+\]
+The second term is equal to one when each row of $F$ is normalized, but we
+write the full expression to make the model dependence explicit.
+
+For motif dimension $(s,d)$, the posterior probability of factor $k$ is updated by
+\[
+  \bar{\gamma}_{sdk}
+  \propto
+  \rho_{sdk}
+  \exp\left[
+    \sum_{i=1}^N \omega_{is}
+    \left\{
+      \sum_{m=1}^M \xi_{isdm}Y_{im}\log F_{km}
+      -
+      \frac{\alpha_{isd}}{\beta_{sd}}\sum_{m=1}^M F_{km}
+    \right\}
+  \right].
+\]
+This is the central posterior uncertainty object in MiSo. A concentrated
+vector $\bar{\gamma}_{sd1},\ldots,\bar{\gamma}_{sdK}$ means that motif dimension
+$(s,d)$ has a well-identified factor. A diffuse vector means that several
+factor rows are plausible explanations for the same motif dimension.
+
+The motif responsibility for observation $i$ is updated from the component
+lower bound for that observation under each motif:
+\[
+  \omega_{is}
+  \propto
+  \pi_s \exp\{\mathcal{L}_{is}\},
+\]
+where
+\begin{align*}
+  \mathcal{L}_{is}
+  &=
+  \sum_{d=1}^D\sum_{m=1}^M
+  \xi_{isdm}Y_{im}
+  \left\{
+    \psi(\alpha_{isd})-\log\beta_{sd}
+    +
+    \sum_{k=1}^K \bar{\gamma}_{sdk}\log F_{km}
+    -
+    \log \xi_{isdm}
+  \right\}
+  \\
+  &\quad
+  -
+  \sum_{d=1}^D\sum_{m=1}^M
+  \frac{\alpha_{isd}}{\beta_{sd}}
+  \sum_{k=1}^K \bar{\gamma}_{sdk}F_{km}
+  -
+  \sum_{d=1}^D
+  \KL\{\Gam(\alpha_{isd},\beta_{sd})
+  \,\|\,\Gam(\alpha_{sd}^0,\beta_{sd}^0)\}.
+\end{align*}
+The mixture weights are updated by
+\[
+  \pi_s \leftarrow \frac{1}{N}\sum_{i=1}^N \omega_{is}.
+\]
+
+\subsection{Learning the factors}
+
+When $F$ is unknown, MiSo updates $F$ using the expected allocated counts
+\[
+  A_{km}
+  =
+  \sum_{i=1}^N\sum_{s=1}^S\sum_{d=1}^D
+  \omega_{is}\bar{\gamma}_{sdk}\xi_{isdm}Y_{im}.
+\]
+The row-normalized update is
+\[
+  F_{km}
+  \leftarrow
+  \frac{A_{km}+\epsilon}
+       {\sum_{m'=1}^M(A_{km'}+\epsilon)}.
+\]
+In the current implementation, $F$ is initialized by MF-Poisson-SuSiE with
+learned $F$, and the subsequent MiSo updates alternate between motif
+responsibilities, motif posteriors, Gamma loading posteriors, empirical-Bayes
+prior updates, and optionally factor updates. This initialization is important
+because the full problem is highly nonconvex.
+
+\subsection{Empirical-Bayes dimension selection}
+
+Each fitted motif starts with the same nominal dimension $D$, but the effective
+dimension of motif $s$ can be smaller. MiSo uses the empirical-Bayes Gamma
+prior parameters to diagnose dimension activity. For each motif $s$ and
+dimension $d$,
+the prior mean
+\[
+  \frac{\alpha_{sd}^0}{\beta_{sd}^0}
+\]
+estimates the loading size expected for that dimension. If this value is close to
+zero relative to the other dimensions in motif $s$, then dimension $d$ is effectively
+inactive. This gives an ARD-style selected dimension
+\[
+  \widehat{D}_s
+  =
+  \#\left\{
+    d:
+    \frac{\alpha_{sd}^0/\beta_{sd}^0}
+         {\sum_{d'=1}^D \alpha_{sd'}^0/\beta_{sd'}^0}
+    \geq \tau
+  \right\},
+\]
+for a threshold $\tau$.
+
+This ARD diagnostic should be interpreted separately from the entropy of
+$\bar{\gamma}_{sd1},\ldots,\bar{\gamma}_{sdK}$. The ARD prior mean asks whether
+a dimension carries loading mass. The entropy of $\bar{\gamma}_{sd}$ asks whether
+the factor identity of that dimension is uncertain. Both are useful: an
+inactive dimension should have small loading mass, while an active but
+ambiguous dimension may have large loading mass and diffuse posterior factor
+identity.
+
+\begin{algorithm}[t]
+\caption{MiSo variational empirical-Bayes fitting}
+\small
+\begin{algorithmic}[1]
+\State Initialize $F$, typically using MF-Poisson-SuSiE with learned factors.
+\State Initialize $\omega_{is}$ by clustering preliminary loading scores.
+\State Initialize $\bar{\gamma}_{sdk}$ from cluster-level loading patterns.
+\State Initialize $\alpha_{isd}$, $\beta_{sd}$, $\pi_s$, and
+$(\alpha_{sd}^0,\beta_{sd}^0)$.
+\For{$t=1,\ldots,T$}
+  \State Update $\xi_{isdm}$ in feature blocks.
+  \State Update $\alpha_{isd}$ and $\beta_{sd}$.
+  \State Update $\omega_{is}$ and $\pi_s$.
+  \State Update $(\alpha_{sd}^0,\beta_{sd}^0)$ by empirical Bayes.
+  \State Update $\bar{\gamma}_{sdk}$ for each motif dimension.
+  \If{factor learning is enabled}
+    \State Update $F$ using expected allocated counts and row-normalize.
+  \EndIf
+  \State Monitor the variational objective or a scheduled approximation to it.
+\EndFor
+\State Report motif responsibilities $\omega$, motif posteriors
+$\bar{\gamma}$, selected dimensions $\widehat{D}_s$, and fitted factors $F$.
+\end{algorithmic}
+\end{algorithm}
+
+\section{Identifiability Theory}
+\label{sec:identifiability}
+
+MiSo places its geometric structure on the latent Poisson intensity, not on
+the observed count vector.  This distinction lets us retain the language of
+submanifolds while using cones when a closed support or an extreme ray is the
+mathematically relevant object.  For a realized motif $s$, write
+\begin{equation}
+  H_s
+  =\sum_{d=1}^{D_s}a_{sd}\delta_{\theta_{sd}},
+  \qquad
+  \theta_{sd}=\frac{F_{\gamma_{sd}}}{\beta_{sd}},
+  \qquad a_{sd},\beta_{sd}>0,
+  \label{eq:H-miso}
+\end{equation}
+where $a_{sd}$ and $\beta_{sd}$ are the Gamma shape and rate.  Coincident atoms
+are combined by adding their shapes, giving the canonical representation
+\begin{equation}
+  H=\sum_{j=1}^{J}a_j\delta_{\theta_j},
+  \qquad a_j>0,
+  \qquad \theta_1,\ldots,\theta_J\text{ pairwise distinct}.
+  \label{eq:H-canonical-main}
+\end{equation}
+The corresponding latent submanifold and its closure cone are
+\begin{align}
+  \mathcal M(H)
+  &=\left\{\sum_{j=1}^{J}x_j\theta_j:x_j>0\right\},
+  \label{eq:latent-submanifold}\\
+  \mathcal C(H)
+  &=\overline{\mathcal M(H)}
+    =\cone\{\theta_1,\ldots,\theta_J\}.
+  \label{eq:closure-cone}
+\end{align}
+Thus $\mathcal M(H)$ is the relative interior of $\mathcal C(H)$ and is a
+smooth submanifold of its linear span.  Its intrinsic dimension is
+$\dim\mathcal M(H)=\operatorname{rank}(\theta_1,\ldots,\theta_J)$, which can
+be smaller than the nominal number of dimensions $D_s$.
+
+To define the distribution encoded by $H$, independently draw
+\[
+  \xi_j\sim\Gam(a_j,1),\qquad j=1,\ldots,J,
+\]
+and set
+\begin{equation}
+  \mu_H=\sum_{j=1}^{J}\xi_j\theta_j.
+  \label{eq:gamma-H-main}
+\end{equation}
+We denote the law of $\mu_H$ by $\Gam(H)$.  This agrees with the original
+shape--rate parameterization because, if
+$\lambda_j\sim\Gam(a_j,\beta_j)$, then
+$\beta_j\lambda_j\sim\Gam(a_j,1)$ and
+$\lambda_jF_{\gamma_j}=(\beta_j\lambda_j)(F_{\gamma_j}/\beta_j)$.
+Conditional on $\mu_H$, the coordinates of $Y$ are independent with
+\[
+  Y_m\mid\mu_H\sim\Poi((\mu_H)_m),
+  \qquad m=1,\ldots,M.
+\]
+Although $\mu_H\in\mathcal M(H)$ almost surely, the topological support of
+its distribution is the closure cone $\mathcal C(H)$.
+
+The population mixture of latent submanifolds is represented by
+\begin{equation}
+  G=\sum_{s=1}^{S}\pi_s\delta_{H_s},
+  \qquad \pi_s>0,
+  \qquad \sum_{s=1}^{S}\pi_s=1,
+  \label{eq:G-main}
+\end{equation}
+and its observed count law is
+\begin{equation}
+  \MiSo(G)
+  =\sum_{s=1}^{S}\pi_s\Poi\{\Gam(H_s)\}.
+  \label{eq:MiSo-G-main}
+\end{equation}
+The motif measure $H_s$ need not be a probability measure: its atom masses
+are Gamma shapes, whereas $\pi_s$ is the mixture probability.  For
+$t\in\R_+^M$, define
+\begin{equation}
+  \Phi_H(t)
+  :=\E\exp\{-\langle t,\mu_H\rangle\}
+  =\prod_{j=1}^{J}(1+\langle\theta_j,t\rangle)^{-a_j}.
+  \label{eq:Phi-H-main}
+\end{equation}
+The probability-generating function of the noisy counts is
+\begin{equation}
+  \E_H\!\left[\prod_{m=1}^{M}z_m^{Y_m}\right]
+  =\Phi_H(\one-z),
+  \qquad z\in[0,1]^M.
+  \label{eq:pgf-main}
+\end{equation}
+This identity is the bridge from the observed Poisson law to the geometry of
+the latent submanifolds.
+
+\begin{theorem}[Identification of one latent submanifold]
+\label{thm:H-identification-main}
+Let $H$ and $H'$ be finite positive atomic measures on
+$\R_+^M\setminus\{0\}$.  Then
+\[
+  \Poi\{\Gam(H)\}\overset{d}{=}\Poi\{\Gam(H')\}
+  \qquad\Longrightarrow\qquad
+  H=H'.
+\]
+Consequently, the latent submanifold $\mathcal M(H)$, its closure cone
+$\mathcal C(H)$, and its intrinsic dimension are identifiable from the
+population distribution of the Poisson observations.
+\end{theorem}
+
+\begin{proof}
+Equality of the count laws gives equality of their probability-generating
+functions.  By \eqref{eq:pgf-main}, $\Phi_H(t)=\Phi_{H'}(t)$ for
+$t\in(0,1)^M$.  Hence their negative log-Laplace transforms agree:
+\[
+  \sum_j a_j\log(1+\langle\theta_j,t\rangle)
+  =
+  \sum_\ell a'_\ell\log(1+\langle\theta'_\ell,t\rangle).
+\]
+Differentiating on this open set gives
+\begin{equation}
+  \sum_j\frac{a_j\theta_j}{1+\langle\theta_j,t\rangle}
+  =
+  \sum_\ell
+  \frac{a'_\ell\theta'_\ell}{1+\langle\theta'_\ell,t\rangle}.
+  \label{eq:rational-main}
+\end{equation}
+
+Choose $v\in\R_{++}^M$ such that distinct vectors among the finitely many
+$\theta_j$ and $\theta'_\ell$ have distinct projections onto $v$.  Such a
+$v$ exists because the excluded choices lie in finitely many proper
+hyperplanes.  Put $r_j=\langle\theta_j,v\rangle$ and
+$r'_\ell=\langle\theta'_\ell,v\rangle$, all of which are positive.  On the
+real line $t=xv$, equation \eqref{eq:rational-main} becomes
+\[
+  \sum_j\frac{a_j\theta_j/r_j}{x+1/r_j}
+  =
+  \sum_\ell\frac{a'_\ell\theta'_\ell/r'_\ell}{x+1/r'_\ell}
+\]
+for $x$ in a positive interval.  Multiplication by all denominators gives an
+identity between vector-valued real polynomials.  Therefore the two real
+partial-fraction decompositions have the same denominator roots and the same
+coefficient at each root.  For a matched pair with $r_j=r'_\ell$, multiplying
+by $x+1/r_j$ and taking the real limit $x\to-1/r_j$ gives
+\[
+  \frac{a_j\theta_j}{r_j}
+  =\frac{a'_\ell\theta'_\ell}{r_j}.
+\]
+Taking the inner product with $v$ yields $a_j=a'_\ell$, after which
+$\theta_j=\theta'_\ell$.  The generic choice of $v$ makes the matching
+one-to-one, proving $H=H'$.
+\end{proof}
+
+The measure representation absorbs the benign Gamma-splitting ambiguity:
+$a_1\delta_\theta+a_2\delta_\theta$ and
+$(a_1+a_2)\delta_\theta$ are literally the same measure.  Theorem
+\ref{thm:H-identification-main} also makes explicit that the Poisson layer is
+lossless for population identification, because the count probability-
+generating function reveals the Laplace transform of the latent intensity
+distribution \citep{Teicher1960}.
+
+For the mixture geometry, let
+\begin{equation}
+  P_G=\sum_{s=1}^{S}\pi_s\Gam(H_s)
+  \label{eq:latent-mixture-main}
+\end{equation}
+be the distribution of the latent intensity and define
+\[
+  \mathcal U(G)=\operatorname{supp}(P_G),
+  \qquad
+  \mathcal C(G)=\cone\{\mathcal U(G)\}.
+\]
+The set $\mathcal U(G)$ retains the union of the closure cones of the latent
+submanifolds, whereas $\mathcal C(G)$ is their global conic hull.
+
+\begin{theorem}[Identification of support geometry and extreme rays]
+\label{thm:global-cone-main}
+Let $G$ and $G'$ be finite probability measures of the form
+\eqref{eq:G-main}.  If
+\[
+  \MiSo(G)\overset{d}{=}\MiSo(G'),
+\]
+then
+\[
+  P_G=P_{G'},
+  \qquad
+  \mathcal U(G)=\mathcal U(G'),
+  \qquad
+  \mathcal C(G)=\mathcal C(G').
+\]
+Consequently, the extreme rays of the global closure cone are identifiable
+despite the Poisson observation noise.  If rays are normalized by their
+intersection with
+$\Delta^{M-1}=\{x\in\R_+^M:\one^\top x=1\}$, the corresponding extreme
+points are identifiable as well.  Moreover, every global extreme ray
+contains an atom from at least one motif measure in the support of $G$ and
+from at least one motif measure in the support of $G'$.
+\end{theorem}
+
+\begin{proof}
+The count probability-generating function is the Laplace transform of $P_G$
+evaluated at $\one-z$.  Equality of the MiSo laws therefore gives equality of
+the multivariate Laplace transforms of $P_G$ and $P_{G'}$ on $(0,1)^M$.
+Uniqueness of the Laplace transform on $\R_+^M$ gives $P_G=P_{G'}$.
+
+For $H=\sum_j a_j\delta_{\theta_j}$, the independent Gamma coefficients in
+\eqref{eq:gamma-H-main} have joint topological support $\R_+^J$.  Their
+linear image consequently has support
+\[
+  \operatorname{supp}\{\Gam(H)\}
+  =\left\{\sum_jx_j\theta_j:x_j\geq0\right\}
+  =\mathcal C(H).
+\]
+Because the mixture is finite and every mixture weight is positive,
+\begin{equation}
+  \mathcal U(G)
+  =\bigcup_{H\in\operatorname{supp}(G)}\mathcal C(H).
+  \label{eq:union-cones-main}
+\end{equation}
+The same identity holds for $G'$.  Equality of $P_G$ and $P_{G'}$ therefore
+identifies the union of closure cones and its global conic hull.
+
+Extreme rays and normalized extreme points are intrinsic properties of this
+identified closed cone.  Finally, $\mathcal C(G)$ is generated by the finite
+union of the atoms in the component measures.  Every extreme ray of a
+finitely generated cone contains a vector from any finite generating set;
+otherwise a point on that ray would be a nontrivial conic combination of
+vectors off the ray.  Applying this fact to the atoms under $G$ and under
+$G'$ proves the final claim.
+\end{proof}
+
+When each factor row is normalized by $\one^\top F_k=1$, the scaled atom
+$\theta=F_k/b$ lies on the same ray as $F_k$, and simplex normalization maps
+it back to $F_k$.  Theorem~\ref{thm:global-cone-main} therefore identifies
+the factor rows corresponding to global extreme rays.  It does not, by
+itself, identify interior dictionary rows or assign the identified rays to
+individual motifs.
+
+\begin{remark}[Interior rays prevent unrestricted mixture identification]
+\label{rem:interior-ray-main}
+Theorem~\ref{thm:H-identification-main} makes the single-submanifold kernel
+injective, but it does not imply that an unrestricted mixture $G$ is
+identifiable.  To see this with all Gamma shapes equal to one, choose linearly
+independent $\theta_A,\theta_B\in\R_+^M\setminus\{0\}$, fix
+$\rho\in(0,1)$, and introduce the interior direction
+\[
+  \theta_C=\rho\theta_A+(1-\rho)\theta_B.
+\]
+Let
+\[
+  H_{AB}=\delta_{\theta_A}+\delta_{\theta_B},\qquad
+  H_{BC}=\delta_{\theta_B}+\delta_{\theta_C},\qquad
+  H_{AC}=\delta_{\theta_A}+\delta_{\theta_C}.
+\]
+Writing
+$A(t)=1+\langle\theta_A,t\rangle$ and defining $B(t)$ and $C(t)$
+analogously, we have $C=\rho A+(1-\rho)B$ and hence
+\begin{align}
+  \Phi_{H_{AB}}(t)
+  &=\frac{1}{A(t)B(t)} \notag\\
+  &=\frac{\rho}{B(t)C(t)}
+    +\frac{1-\rho}{A(t)C(t)} \notag\\
+  &=\rho\Phi_{H_{BC}}(t)
+    +(1-\rho)\Phi_{H_{AC}}(t).
+  \label{eq:interior-identity-main}
+\end{align}
+Thus the distinct mixing measures
+\[
+  G=\delta_{H_{AB}},
+  \qquad
+  G'=\rho\delta_{H_{BC}}+(1-\rho)\delta_{H_{AC}}
+\]
+produce exactly the same noisy count law.  Geometrically, one latent
+submanifold has been represented by a mixture whose two closure cones
+subdivide the original cone along an interior ray.  This does not contradict
+Theorem~\ref{thm:global-cone-main}: both representations have the same latent
+support and the same global extreme rays.  Rather, it shows why an
+over-specified interior factor can prevent identification of the individual
+motifs even when the global geometry is identifiable.
+\end{remark}
+
+To state the condition needed for full mixture identification, call a
+transform family $\{\Phi_H:H\in\mathcal H_0\}$ finitely linearly independent
+if, for every finite collection of distinct
+$H_1,\ldots,H_r\in\mathcal H_0$,
+\begin{equation}
+  \sum_{j=1}^{r}c_j\Phi_{H_j}(t)=0
+  \text{ for every }t\in(0,1)^M
+  \quad\Longrightarrow\quad
+  c_1=\cdots=c_r=0.
+  \label{eq:finite-linear-independence-main}
+\end{equation}
+
+\begin{theorem}[Finite-mixture identification]
+\label{thm:G-identification-main}
+Let $G$ and $G'$ be finite probability measures on $\mathcal H_0$.  If
+$\{\Phi_H:H\in\mathcal H_0\}$ is finitely linearly independent, then
+\[
+  \MiSo(G)\overset{d}{=}\MiSo(G')
+  \qquad\Longrightarrow\qquad
+  G=G'.
+\]
+Conversely, if the transform family is not finitely linearly independent,
+then the class of finite probability mixtures on $\mathcal H_0$ is not
+identifiable.
+\end{theorem}
+
+\begin{proof}
+Take the union of the finite supports of $G$ and $G'$ and denote its distinct
+elements by $H_1,\ldots,H_r$.  Equality of the noisy count laws and
+\eqref{eq:pgf-main} gives
+\[
+  \sum_{j=1}^{r}\{G(H_j)-G'(H_j)\}\Phi_{H_j}(t)=0,
+  \qquad t\in(0,1)^M.
+\]
+Finite linear independence forces every coefficient to vanish, so $G=G'$.
+Conversely, consider a nonzero finite linear relation among distinct
+transforms.  At $t=0$, every $\Phi_H(0)=1$, so the positive and negative
+coefficient sums are equal.  Separating the two sides and normalizing by
+their common sum produces two different probability mixing measures with
+the same count probability-generating function, and hence the same MiSo law.
+\end{proof}
+
+Theorem~\ref{thm:G-identification-main} is the standard finite-mixture
+criterion of \citet{YakowitzSpragins1968}, within the broader identifiability
+program of \citet{Teicher1960,Teicher1963}.  It separates two questions that
+are sometimes conflated: injectivity of each component kernel, established by
+Theorem~\ref{thm:H-identification-main}, and linear independence of the whole
+component family, which is required to identify $G$.
+
+\begin{corollary}[Common simplicial dictionary]
+\label{cor:dictionary-main}
+Fix linearly independent vectors
+$\theta_1,\ldots,\theta_K\in\R_+^M\setminus\{0\}$ with $K\leq M$, write
+$\Theta=\{\theta_1,\ldots,\theta_K\}$, and consider
+\begin{equation}
+  \mathcal H_\Theta
+  =\left\{
+    H_\alpha=\sum_{k=1}^{K}\alpha_k\delta_{\theta_k}:
+    \alpha\in\R_+^K\setminus\{0\}
+  \right\},
+  \label{eq:H-theta-main}
+\end{equation}
+where a zero coordinate means that the corresponding atom is omitted.  Then
+every finite MiSo mixing measure $G$ on $\mathcal H_\Theta$ is identifiable.
+\end{corollary}
+
+\begin{proof}
+For $H_\alpha\in\mathcal H_\Theta$,
+\[
+  \Phi_{H_\alpha}(t)
+  =\prod_{k=1}^{K}
+    (1+\langle\theta_k,t\rangle)^{-\alpha_k}.
+\]
+Because the $\theta_k$ are linearly independent, the map
+$t\mapsto(\langle\theta_1,t\rangle,\ldots,
+\langle\theta_K,t\rangle)$ has full row rank and maps an open subset of
+$(0,1)^M$ onto an open subset of $\R^K$.  Make the coordinate change
+\[
+  y_k=\log(1+\langle\theta_k,t\rangle).
+\]
+A finite linear relation among transforms associated with distinct
+$\alpha^{(j)}$ becomes
+\[
+  \sum_jc_j\exp\{-\langle\alpha^{(j)},y\rangle\}=0
+\]
+on an open set.  Choose a direction $v$ for which the finitely many values
+$\langle\alpha^{(j)},v\rangle$ are distinct and restrict the identity to a
+short real line segment parallel to $v$.  Distinct univariate exponentials
+are linearly independent, so every $c_j=0$.  The result follows from
+Theorem~\ref{thm:G-identification-main}.
+\end{proof}
+
+Corollary~\ref{cor:dictionary-main} allows a motif to omit a global ray by
+setting its corresponding shape to zero.  It requires the scaled direction
+$\theta_k$ to be shared across motifs, as occurs when selecting factor row
+$F_k$ also selects a factor-specific rate $\beta_k$.  The result also permits a
+fixed over-specified dictionary with $K'>K$ provided all $K'$ scaled
+directions remain linearly independent, so necessarily $K'\leq M$.  The true
+model is then embedded by assigning zero shape to the extra directions.
+However, the corollary conditions on a fixed dictionary; it does not by itself
+establish joint identifiability when the dictionary is learned.
+
+\section{Experiments Needed}
+\label{sec:experiments}
+
+The empirical goal is not only to show good reconstruction error. The paper
+needs to show that MiSo recovers meaningful factor-usage motifs, clusters
+observations by motif, learns factors when $F$ is unknown, and quantifies
+uncertainty in settings where hard sparse supports are unstable.
+
+\subsection{Baselines}
+
+The main baselines should be:
+\begin{enumerate}
+  \item Poisson NMF followed by clustering of normalized loading scores;
+  \item MF-Poisson-SuSiE followed by clustering of posterior loading scores;
+  \item sparse NMF baselines with tuned sparsity penalties, if available;
+  \item ablations of MiSo with fixed $F$, learned $F$, and different
+  initialization schemes.
+\end{enumerate}
+The first two baselines are already implemented in the current benchmark code.
+
+\subsection{Metrics}
+
+The simulation tables should include:
+\begin{enumerate}
+  \item factor recovery, measured by cosine matching between fitted rows of
+  $F$ and true rows of $F_0$;
+  \item motif clustering accuracy, measured by matching $\arg\max_s\omega_{is}$
+  to true groups;
+  \item support recovery, measured by converting posterior motif scores to
+  predicted active factors;
+  \item soft clustering diagnostics, based on group-level averages of
+  $\omega_{is}$ rather than only hard labels;
+  \item posterior uncertainty summaries for $\bar{\gamma}_{sd}$, including
+  entropy, top-two gaps, and targeted pairwise split metrics;
+  \item selected motif dimensions $\widehat{D}_s$ from the ARD prior means;
+  \item predictive fit, such as held-out Poisson log likelihood or deviance.
+\end{enumerate}
+
+\subsection{Core simulation settings}
+
+The current roadmap suggests the following simulation studies.
+
+\paragraph{Correctly specified block motifs.}
+Use correct $K$ and nominal $D$, with groups occupying simple single-factor and
+multi-factor supports. This verifies that the method can recover factors,
+clusters, and supports in a clean setting. Current evidence shows feasibility,
+but a larger seed grid is needed before claiming robust superiority over
+baselines.
+
+\paragraph{Tree/no-anchor motifs.}
+Use motifs such as $(1,2,3)$, $(1,2,4)$, $(1,5,6)$, $(1,5,7)$, $(1,2)$, and
+$(1,5)$, so that no group is explained by a single anchor factor. This is the
+strongest current positive setting: in a small multi-seed pilot, MiSo has
+substantially better support recovery than the baseline pipelines.
+
+\paragraph{Overspecified $K$.}
+Generate data with $K$ true factors but fit with extra candidate factor rows,
+including near-duplicates of true factors. The key diagnostic is whether
+$\bar{\gamma}_{sd}$ splits posterior mass across duplicate rows when they are
+statistically interchangeable. Global entropy is not sufficient; the paper
+should report pair-specific posterior split metrics for the duplicated factors.
+
+\paragraph{Correlated factors.}
+Generate factor rows with controlled correlation strength. This tests whether
+MiSo can express targeted ambiguity between correlated factors. The current
+evidence suggests that raw entropy can be misleading because weak dimensions may
+become globally diffuse. The final paper version should sweep correlation strength and
+report targeted pair uncertainty, not only mean entropy.
+
+\paragraph{Overspecified $D$.}
+Fit each motif with a nominal dimension larger than the true motif dimension.
+The target behavior is that extra dimensions either have small ARD prior mean
+$\alpha_{sd}^0/\beta_{sd}^0$ or small posterior loading mass. The current
+single-seed evidence suggests that diffuse-surplus initialization helps, while
+repeated-surplus initialization duplicates active dimensions. A full paper needs
+multi-seed threshold sweeps for $\widehat{D}_s$ and comparisons against the
+true motif dimensions after matching fitted motifs to groups.
+
+\subsection{Real data}
+
+The real-data analysis should demonstrate three advantages of the MiSo
+representation beyond reconstruction quality. First, it should identify
+recurring motif types: scientifically meaningful combinations of factors that
+are reused across observations. A small atlas of these motifs, together with
+their responsibilities, should provide a more concise summary than a typical
+admixture bar plot with many separately colored factors. Second, it should show
+that a motif represents a low-dimensional submanifold rather than merely a
+cluster. In the single-cell application, cells assigned to the same motif
+should populate its posterior dimension coordinates continuously, with related
+cell states, marker expression, and---where available---spatial position varying
+smoothly along a trajectory consistent with differentiation. Third, the
+analysis should recover structure among the factors themselves. Factor co-use
+across motifs induces a graph in which broadly reused factors may act as hubs
+and more specialized factors as leaves; these relationships should be checked
+against external biological interpretation.
+
+These are goals for the final analysis rather than claims established by the
+current experiment. The identifiability theory remains to be completed, and
+the post-processing needed when $K$, $S$, and $D$ are over-specified still
+requires further study. In particular, the current Wasserstein dendrogram and
+merging rule are exploratory and should not yet be presented as the final
+procedure.
+
+\paragraph{A concise empirical demonstration.}
+The main real-data result can be organized as one multi-panel figure. The first
+panel should show the conventional NMF loading bar plot and its loss of
+readability when $K$ is moderately large. The second should replace it with a
+small motif atlas, displaying the factors and effective dimension used by each
+recurring motif together with its prevalence. The third should highlight one
+well-supported two- or three-dimensional motif and plot its cells in the
+corresponding posterior dimension coordinates. Cell annotations should be used
+only after fitting: related states should occupy a connected trajectory, and
+independently chosen marker genes should vary smoothly along the resulting
+MiSo coordinate. The fourth panel should show the factor co-use graph, with a
+small number of biologically interpretable hub, branch, and leaf factors.
+
+A companion table should report only the quantities needed to support this
+picture: held-out deviance relative to Poisson NMF, the average number of active
+factors per cell, the effective dimensions of the highlighted motifs,
+stability across initializations, and external agreement with cell annotations
+or an independently estimated pseudotime. Thus the intended claim is not that
+MiSo improves reconstruction at all costs, but that it preserves predictive fit
+while replacing a high-dimensional loading display by recurring motifs,
+within-motif coordinates, and a factor-relation graph. The primary display
+should use fitted motifs before any uncertain merging step; alternative
+post-processing rules can be reported separately as a sensitivity analysis.
+
+\subsection{Ablations and robustness checks}
+
+The paper should include ablations for:
+\begin{enumerate}
+  \item fixed versus learned $F$;
+  \item initialization from Poisson NMF versus MF-Poisson-SuSiE;
+  \item sensitivity to the number of motifs $S$;
+  \item sensitivity to nominal $D$ and the ARD threshold $\tau$;
+  \item sensitivity to duplicate-factor and correlated-factor strength;
+  \item stability across random initializations.
+\end{enumerate}
+These experiments are needed to distinguish the proposed statistical model from
+an initialization artifact.
+
+\section{Discussion}
+
+MiSo reframes sparse NMF as a motif discovery problem. Instead of estimating
+sparse loadings independently for each observation, it pools repeated sparsity
+patterns through latent motifs. The posterior motif probabilities
+$\bar{\gamma}_{sdk}$ provide an interpretable uncertainty summary over the
+factor identities defining each motif, while the responsibilities $\omega_{is}$
+cluster observations by motif. The empirical-Bayes prior means
+$\alpha_{sd}^0/\beta_{sd}^0$ provide a natural ARD-style diagnostic for the
+effective dimension of each motif.
+
+The current evidence supports the promise of this approach, especially in
+tree/no-anchor simulations and in overfitted-factor uncertainty diagnostics.
+The main open issues are stable dimension selection, broader multi-seed
+benchmarks, model-selection guidance for $K$, $S$, and $D$, and a real-data
+example with scientifically interpretable motifs.
+
+\bibliographystyle{plainnat}
+\bibliography{sparsity}
+
+\end{document}

@@ -1,3 +1,6 @@
+## LEGACY EXPERIMENT PROTOTYPE. Not part of the frozen MiSo API.
+## Use poisson_susie_nmf() from joint-learn-susie-poi-F.R instead.
+
 ## ELBO for matrix factorization Poisson-SuSiE
 # Y: (N, M)
 # F: (K, M)
@@ -376,4 +379,3 @@ plot(L[idx7, 4], L[idx7, 1], col = cols7, pch = 19, cex = 0.8,
 legend("topright", legend = c("1,2,4", "other"), col = c("red", "black"), pch = 19)
 
 ELBO_run2 = res$elbo[100]
-

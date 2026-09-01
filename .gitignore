@@ -4,6 +4,36 @@
 .Ruserdata
 .Rapp.history
 .DS_Store
+
+# Downloaded data: keep only the instructions needed to reproduce downloads.
+/data/*
+!/data/README.md
+
+# Fitted models and generated analysis caches.
+*.rds
+*.rda
+*.RData
+/analysis/cache/
+
+# Temporary renders and scratch files.
+/tmp/
+
+# LaTeX build intermediates (keep source and final PDFs).
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+
+/.venv-genetics/
+/data/sci-space/
+/data/1000-genomes/
+/output/sci-space-miso/
+/output/sci-space-miso-large/
+/output/1000-genomes-chr1-miso/
 analysis/figure
 analysis/*png
 analysis/*html

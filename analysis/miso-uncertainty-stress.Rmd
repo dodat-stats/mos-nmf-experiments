@@ -1,0 +1,469 @@
+---
+title: "Soft MiSo Uncertainty Stress Tests"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 7, fig.height = 4)
+```
+
+This file targets the paper's uncertainty claim. In clean simulations,
+`gamma_bar[s,d,]` often collapses to a point mass because each motif is strongly
+identified by many samples. Here we create settings where uncertainty should be
+visible: overfitted factor rows and correlated true factors.
+
+```{r source-code}
+source("code/miso.R")
+```
+
+## Helpers
+
+```{r helpers}
+row_cosine = function(A, B) {
+  A_norm = sqrt(rowSums(A^2))
+  B_norm = sqrt(rowSums(B^2))
+  (A %*% t(B)) / (A_norm %o% B_norm)
+}
+
+support_label = function(support) paste(sort(unique(support)), collapse = ",")
+
+simulate_support_scenario = function(N, M, F0, group_supports, shape_vec,
+                                      seed = 1) {
+  set.seed(seed)
+  K = nrow(F0)
+  S = length(group_supports)
+  n_per_group = N / S
+  grp = rep(seq_len(S), each = n_per_group)
+
+  L = matrix(0, nrow = N, ncol = K)
+  for (s in seq_len(S)) {
+    idx = which(grp == s)
+    support = group_supports[[s]]
+    L[idx, support] = matrix(
+      rgamma(length(idx) * length(support), shape = shape_vec[s], rate = 1),
+      nrow = length(idx),
+      ncol = length(support)
+    )
+  }
+
+  Y = matrix(rpois(N * M, L %*% F0), nrow = N, ncol = M)
+
+  list(
+    Y = Y,
+    F0 = F0,
+    L = L,
+    grp = grp,
+    group_supports = group_supports,
+    true_patterns = vapply(group_supports, support_label, character(1))
+  )
+}
+
+make_sparse_factors = function(K, M, shape = 0.1, rate = 0.01, seed = 1) {
+  set.seed(seed)
+  F0 = matrix(rgamma(K * M, shape = shape, rate = rate), nrow = K, ncol = M)
+  normalize_rows(F0)
+}
+
+make_correlated_factors = function(K, M, correlated_pair = c(1, 2),
+                                   mix = 0.92, seed = 1) {
+  F0 = make_sparse_factors(K, M, seed = seed)
+  a = correlated_pair[1]
+  b = correlated_pair[2]
+  F0[b, ] = normalize_rows(matrix(mix * F0[a, ] + (1 - mix) * F0[b, ],
+                                  nrow = 1))
+  F0
+}
+
+fit_miso_from_true_F = function(dat, F_init, K_fit, S, D, init_seed,
+                               max_iters = 20, n_inner = 3,
+                               block_size = 100,
+                               gamma_floor = 0.20,
+                               update_F = FALSE) {
+  set.seed(init_seed)
+  nmf_init = poisson_nmf_init(dat$Y, K_fit, max_iters = 60,
+                              init_seed = init_seed)
+  scores = nmf_init$L
+  gamma_init = init_soft_gamma_from_loading_scores(
+    scores = scores,
+    S = S,
+    D = D,
+    init_seed = init_seed,
+    gamma_floor = gamma_floor
+  )
+
+  fit = miso_fixed_gamma(
+    Y = dat$Y,
+    F = F_init,
+    gamma_bar = gamma_init$gamma_bar,
+    max_iters = max_iters,
+    n_inner = n_inner,
+    update_prior = TRUE,
+    update_F = update_F,
+    update_gamma = TRUE,
+    gamma_step_init = 0.25,
+    gamma_step_ramp = 10,
+    F_step_init = 0.1,
+    F_step_ramp = 15,
+    tol = 1e-5,
+    min_iters = 6,
+    patience = 2,
+    block_size = block_size
+  )
+
+  fit$gamma_init = gamma_init
+  fit
+}
+
+top_two_gap = function(prob) {
+  sorted = sort(prob, decreasing = TRUE)
+  sorted[1] - sorted[2]
+}
+
+gamma_uncertainty_table = function(fit, label = "fit") {
+  S = dim(fit$gamma_bar)[1]
+  D = dim(fit$gamma_bar)[2]
+  out = do.call(rbind, lapply(seq_len(S), function(s) {
+    do.call(rbind, lapply(seq_len(D), function(d) {
+      p = fit$gamma_bar[s, d, ]
+      data.frame(
+        fit = label,
+        submanifold = s,
+        slot = d,
+        top_factor = which.max(p),
+        top_prob = max(p),
+        top_two_gap = top_two_gap(p),
+        entropy = -sum(p * log(p)) / log(length(p))
+      )
+    }))
+  }))
+  rownames(out) = NULL
+  out
+}
+
+plot_gamma_slot_heatmap = function(fit, slots, main) {
+  mat = do.call(rbind, lapply(seq_len(nrow(slots)), function(j) {
+    fit$gamma_bar[slots$submanifold[j], slots$slot[j], ]
+  }))
+  row_lab = paste0("S", slots$submanifold, ":d", slots$slot)
+
+  image(x = seq_len(ncol(mat)), y = seq_len(nrow(mat)),
+        z = t(mat), axes = FALSE, xlab = "Fitted factor",
+        ylab = "Motif slot", main = main, col = hcl.colors(100, "YlOrRd"))
+  axis(1, at = seq_len(ncol(mat)), labels = paste0("fit ", seq_len(ncol(mat))))
+  axis(2, at = seq_len(nrow(mat)), labels = row_lab, las = 1)
+  for (i in seq_len(nrow(mat))) {
+    for (k in seq_len(ncol(mat))) {
+      text(k, i, sprintf("%.2f", mat[i, k]), cex = 0.65)
+    }
+  }
+  box()
+}
+
+plot_group_responsibilities = function(omega, grp, main) {
+  group_resp = do.call(rbind, lapply(sort(unique(grp)), function(g) {
+    colMeans(omega[grp == g, , drop = FALSE])
+  }))
+
+  image(x = seq_len(ncol(group_resp)), y = seq_len(nrow(group_resp)),
+        z = t(group_resp), axes = FALSE, xlab = "Fitted submanifold",
+        ylab = "True group", main = main, col = hcl.colors(100, "YlOrRd"))
+  axis(1, at = seq_len(ncol(group_resp)),
+       labels = paste0("S", seq_len(ncol(group_resp))))
+  axis(2, at = seq_len(nrow(group_resp)),
+       labels = paste0("G", seq_len(nrow(group_resp))), las = 1)
+  for (g in seq_len(nrow(group_resp))) {
+    for (s in seq_len(ncol(group_resp))) {
+      text(s, g, sprintf("%.2f", group_resp[g, s]), cex = 0.65)
+    }
+  }
+  box()
+}
+
+plot_factor_cosine = function(F, F_ref, main) {
+  cosine = row_cosine(F, F_ref)
+  image(x = seq_len(ncol(cosine)), y = seq_len(nrow(cosine)),
+        z = t(cosine), axes = FALSE, xlab = "Reference factor",
+        ylab = "Fitted factor", main = main, col = hcl.colors(100, "YlOrRd"))
+  axis(1, at = seq_len(ncol(cosine)),
+       labels = paste0("ref ", seq_len(ncol(cosine))))
+  axis(2, at = seq_len(nrow(cosine)),
+       labels = paste0("fit ", seq_len(nrow(cosine))), las = 1)
+  for (i in seq_len(nrow(cosine))) {
+    for (j in seq_len(ncol(cosine))) {
+      text(j, i, sprintf("%.2f", cosine[i, j]), cex = 0.65)
+    }
+  }
+  box()
+}
+
+motif_scores_true_space = function(fit, learned_to_true) {
+  scores = motif_factor_scores(fit)$scores
+  K_true = max(learned_to_true, na.rm = TRUE)
+  out = matrix(0, nrow = nrow(scores), ncol = K_true)
+  for (k in seq_along(learned_to_true)) {
+    if (!is.na(learned_to_true[k])) {
+      out[, learned_to_true[k]] = out[, learned_to_true[k]] + scores[, k]
+    }
+  }
+  out
+}
+
+summarize_fit = function(fit, dat, label) {
+  ent = gamma_uncertainty_table(fit, label)
+  data.frame(
+    fit = label,
+    cluster_accuracy = cluster_accuracy(fit$z_hat, dat$grp),
+    mean_max_responsibility = mean(apply(fit$omega, 1, max)),
+    mean_gamma_entropy = mean(ent$entropy),
+    max_gamma_entropy = max(ent$entropy),
+    mean_top_prob = mean(ent$top_prob),
+    min_top_prob = min(ent$top_prob),
+    final_elbo = tail(fit$elbo[!is.na(fit$elbo)], 1)
+  )
+}
+```
+
+## Overspecified K With Duplicate Candidate Factors
+
+Here the data are generated from `K_true = 5` factors, but the fitted
+dictionary has `K_fit = 7`. The two extra rows are near-duplicates of true
+factors 1 and 2. We hold this overcomplete dictionary fixed in the first test.
+If the soft motif posterior is doing its job, slots involving true factors 1 or
+2 should be allowed to spread mass across the original and duplicate rows.
+
+```{r overspecified-k-simulate}
+K_true = 5
+K_fit = 7
+M = 300
+
+F_true = make_sparse_factors(K_true, M, seed = 22)
+set.seed(23)
+dup1 = normalize_rows(matrix(0.94 * F_true[1, ] +
+                               0.06 * make_sparse_factors(1, M, seed = 24),
+                             nrow = 1))
+dup2 = normalize_rows(matrix(0.94 * F_true[2, ] +
+                               0.06 * make_sparse_factors(1, M, seed = 25),
+                             nrow = 1))
+F_over = rbind(F_true, dup1, dup2)
+
+over_supports = list(
+  c(1),
+  c(2),
+  c(3),
+  c(4),
+  c(5),
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(2, 3, 5)
+)
+
+over_dat = simulate_support_scenario(
+  N = 240,
+  M = M,
+  F0 = F_true,
+  group_supports = over_supports,
+  shape_vec = c(rep(8, 5), rep(14, 3)),
+  seed = 26
+)
+
+data.frame(
+  group = seq_along(over_supports),
+  true_active_factors = over_dat$true_patterns
+)
+```
+
+```{r overspecified-k-fit}
+over_fit = fit_miso_from_true_F(
+  dat = over_dat,
+  F_init = F_over,
+  K_fit = K_fit,
+  S = length(over_supports),
+  D = 3,
+  init_seed = 27,
+  max_iters = 18,
+  n_inner = 3,
+  block_size = 100,
+  gamma_floor = 0.30,
+  update_F = FALSE
+)
+
+summarize_fit(over_fit, over_dat, "fixed overcomplete F")
+```
+
+```{r overspecified-k-diagnostics}
+plot_factor_cosine(
+  F_over,
+  F_true,
+  "Overcomplete dictionary: candidate and true factor cosine"
+)
+
+plot_group_responsibilities(
+  over_fit$omega,
+  over_dat$grp,
+  "Overspecified K: group responsibilities"
+)
+
+over_uncertainty = gamma_uncertainty_table(over_fit, "fixed overcomplete F")
+over_uncertainty[order(over_uncertainty$top_prob), ][seq_len(12), ]
+```
+
+```{r overspecified-k-gamma-heatmap}
+plot_gamma_slot_heatmap(
+  over_fit,
+  slots = over_uncertainty[order(over_uncertainty$top_prob), ][seq_len(12), ],
+  "Overspecified K: most uncertain motif slots"
+)
+```
+
+The extra rows are candidate factors 6 and 7. They are near-duplicates of true
+factors 1 and 2 respectively. Posterior mass split between rows `(1,6)` or
+`(2,7)` is the desirable behavior here: a hard motif would be forced to choose
+one duplicate, while `gamma_bar` can represent the ambiguity.
+
+```{r duplicate-mass}
+duplicate_mass = do.call(rbind, lapply(seq_len(dim(over_fit$gamma_bar)[1]),
+                                        function(s) {
+  do.call(rbind, lapply(seq_len(dim(over_fit$gamma_bar)[2]), function(d) {
+    data.frame(
+      submanifold = s,
+      slot = d,
+      mass_true1_or_dup = over_fit$gamma_bar[s, d, 1] +
+        over_fit$gamma_bar[s, d, 6],
+      split_true1_vs_dup = min(over_fit$gamma_bar[s, d, 1],
+                               over_fit$gamma_bar[s, d, 6]),
+      mass_true2_or_dup = over_fit$gamma_bar[s, d, 2] +
+        over_fit$gamma_bar[s, d, 7],
+      split_true2_vs_dup = min(over_fit$gamma_bar[s, d, 2],
+                               over_fit$gamma_bar[s, d, 7])
+    )
+  }))
+}))
+
+duplicate_mass[order(-pmax(duplicate_mass$split_true1_vs_dup,
+                           duplicate_mass$split_true2_vs_dup)), ][seq_len(12), ]
+```
+
+In this seeded experiment, the most useful diagnostic is the split mass within
+the duplicate pairs. A large value of `split_true2_vs_dup`, for example, means
+that the motif slot has not arbitrarily selected either fitted row 2 or fitted
+row 7; it has posterior support for both rows. This is the kind of behavior we
+would want to emphasize in a paper, because it distinguishes posterior motif
+uncertainty from hard support recovery.
+
+## Correlated True Factors
+
+Here `K` is correctly specified, but true factors 1 and 2 are highly correlated.
+Groups that use either factor should be harder to distinguish, and uncertainty
+should concentrate around those slots.
+
+```{r correlated-simulate}
+K = 5
+M = 300
+F_corr = make_correlated_factors(K, M, correlated_pair = c(1, 2),
+                                 mix = 0.96, seed = 32)
+
+corr_supports = list(
+  c(1),
+  c(2),
+  c(3),
+  c(1, 3),
+  c(2, 3),
+  c(1, 2)
+)
+
+corr_dat = simulate_support_scenario(
+  N = 180,
+  M = M,
+  F0 = F_corr,
+  group_supports = corr_supports,
+  shape_vec = c(5, 5, 8, 10, 10, 10),
+  seed = 33
+)
+
+data.frame(
+  group = seq_along(corr_supports),
+  true_active_factors = corr_dat$true_patterns
+)
+```
+
+```{r correlated-fit}
+corr_fit = fit_miso_from_true_F(
+  dat = corr_dat,
+  F_init = F_corr,
+  K_fit = K,
+  S = length(corr_supports),
+  D = 2,
+  init_seed = 34,
+  max_iters = 18,
+  n_inner = 3,
+  block_size = 100,
+  gamma_floor = 0.30,
+  update_F = FALSE
+)
+
+summarize_fit(corr_fit, corr_dat, "fixed correlated F")
+```
+
+```{r correlated-diagnostics}
+plot_factor_cosine(
+  F_corr,
+  F_corr,
+  "Correlated scenario: true factor cosine"
+)
+
+plot_group_responsibilities(
+  corr_fit$omega,
+  corr_dat$grp,
+  "Correlated factors: group responsibilities"
+)
+
+corr_uncertainty = gamma_uncertainty_table(corr_fit, "fixed correlated F")
+corr_uncertainty[order(corr_uncertainty$top_prob), ]
+```
+
+```{r correlated-gamma-heatmap}
+plot_gamma_slot_heatmap(
+  corr_fit,
+  slots = corr_uncertainty[order(corr_uncertainty$top_prob), ],
+  "Correlated factors: motif slot posteriors"
+)
+```
+
+```{r correlated-pair-mass}
+corr_pair_mass = do.call(rbind, lapply(seq_len(dim(corr_fit$gamma_bar)[1]),
+                                        function(s) {
+  do.call(rbind, lapply(seq_len(dim(corr_fit$gamma_bar)[2]), function(d) {
+    p = corr_fit$gamma_bar[s, d, ]
+    data.frame(
+      submanifold = s,
+      slot = d,
+      mass_factor_1_or_2 = p[1] + p[2],
+      split_between_1_and_2 = min(p[1], p[2]),
+      entropy = -sum(p * log(p)) / log(length(p))
+    )
+  }))
+}))
+
+corr_pair_mass[order(-corr_pair_mass$split_between_1_and_2), ]
+```
+
+This correlated-factor stress test is intentionally difficult. In this seeded
+run, some motif slots remain nearly uniform, which produces high entropy but is
+not the same as targeted uncertainty between factors 1 and 2. The more
+convincing paper diagnostic is therefore not raw entropy alone, but entropy
+together with concentrated mass on a scientifically meaningful competing set,
+such as `mass_factor_1_or_2` and `split_between_1_and_2`.
+
+## Takeaway
+
+These are targeted stress tests for uncertainty, not final benchmark
+experiments. The desired signal is not only high clustering accuracy. We also
+want `gamma_bar` to behave differently from a hard motif assignment: when
+multiple factor rows are statistically interchangeable, motif slots should show
+larger entropy or explicit posterior mass split across the competing factors.

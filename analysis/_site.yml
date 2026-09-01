@@ -1,7 +1,7 @@
-name: mos-nmf-experiments
+name: miso-experiments
 output_dir: ../docs
 navbar:
-  title: mos-nmf-experiments
+  title: MiSo Experiments
   left:
   - text: Home
     href: index.html

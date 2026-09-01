@@ -1,25 +1,24 @@
 # Project Goal
 
-Develop MoS-NMF into a statistics paper centered on interpretable motif
-discovery in sparse NMF loadings with posterior uncertainty.
+Develop MiSo into a statistics paper centered on interpretable discovery of
+recurring factor-usage motifs in NMF with posterior uncertainty.
 
 Publication name for manuscript authorship: Dat Do.
 
-The intended paper is not just another sparse NMF method. The main contribution
-should be a probabilistic model that learns repeated sparsity motifs in the
-loading matrix, clusters samples by those motifs, and quantifies motif-level
-uncertainty through posterior distributions such as `gamma_bar[s, d, k]`.
+The intended paper is not just another NMF method. The main contribution
+should be a probabilistic model that learns repeated factor-usage motifs,
+clusters samples by those motifs, and quantifies motif-level uncertainty through posterior distributions such as `gamma_bar[s, d, k]`.
 
 ## Core Framing
 
-Existing sparse NMF methods encourage sparse loadings, but usually do not model
-recurrent sparsity patterns as interpretable latent structure. MoS-NMF should
-represent those patterns as submanifolds/motifs and provide posterior
-uncertainty over which factors define each motif.
+MiSo represents recurring factor-usage patterns as low-dimensional
+submanifolds spanned by subsets of potentially dense factor rows. It does not
+impose sparsity on F, and it provides posterior uncertainty over which factors
+define each motif.
 
 ## Immediate Roadmap
 
-Validate MoS-NMF against MF-Poisson-SuSiE and simple baselines across
+Validate MiSo against MF-Poisson-SuSiE and simple baselines across
 controlled simulations:
 
 - correct `K`, `D`, and known or well-initialized `F`
@@ -40,7 +39,7 @@ Key diagnostics:
 
 ## Working Hypothesis
 
-The paper becomes compelling if MoS-NMF improves motif recovery and
+The paper becomes compelling if MiSo improves motif recovery and
 uncertainty interpretation over per-sample MF-Poisson-SuSiE, especially in
 settings with overfitted or correlated factors where hard assignments are
 unstable or arbitrary.
@@ -48,12 +47,12 @@ unstable or arbitrary.
 ## Current Evidence Snapshot
 
 The strongest current positive signal is the tree/no-anchor simulation: in the
-small three-seed pilot, MoS-NMF has much better support-pattern recovery
+small three-seed pilot, MiSo has much better support-pattern recovery
 than Poisson NMF + k-means or MF-Poisson-SuSiE + k-means, while hard clustering
 is comparable.
 
 The block simulation supports feasibility, but it is not yet a clean
-support-recovery superiority result across seeds. MoS-NMF has strong hard
+support-recovery superiority result across seeds. MiSo has strong hard
 clustering and factor recovery, while support accuracy is close to the baseline
 pipelines in the current three-seed pilot.
 
@@ -64,7 +63,7 @@ overspecified `K`, duplicated or correlated factors, overspecified `D`, weak
 motifs, and unstable hard assignments.
 
 The first multi-seed uncertainty pilot is
-`analysis/mos-nmf-uncertainty-multiseed.Rmd`. With fixed ambiguous dictionaries,
+`analysis/miso-uncertainty-multiseed.Rmd`. With fixed ambiguous dictionaries,
 overspecified `K` shows duplicate-pair posterior splitting in selected motif
 dimensions, with max split about `0.46` but mean split only about `0.08` across
 all dimensions. Correlated factors show stronger targeted pair uncertainty, with mean
@@ -76,7 +75,7 @@ For overspecified `D`, use EB/ARD dimension activity as a primary diagnostic:
 the manuscript notation is `alpha^0_{sd} / beta^0_{sd}` for the prior mean
 loading size of dimension `d` in motif `s`. The code still stores these as
 `alpha0[s,d] / lambda0[s,d]`. The code now has `motif_slot_activity()` and
-`select_motif_dimensions()` in `code/mos-nmf.R`. In the current single-seed
+`select_motif_dimensions()` in `code/miso.R`. In the current single-seed
 over-`D` notebook, repeated-surplus initialization keeps all five dimensions active,
 whereas diffuse-surplus initialization gives motif-specific selected dimensions
 closer to the matched true dimensions. Dimension-scale shrinkage can reduce

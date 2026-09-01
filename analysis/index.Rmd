@@ -1,5 +1,5 @@
 ---
-title: "MoS-NMF Experiments"
+title: "MiSo Experiments"
 site: workflowr::wflow_site
 output:
   workflowr::wflow_html:
@@ -8,10 +8,10 @@ editor_options:
   chunk_output_type: console
 ---
 
-This workflowr site records the experiments behind the MoS-NMF project.
+This workflowr site records the experiments behind the MiSo project.
 The current sequence starts from Poisson SuSiE, moves to matrix-factorization
 Poisson SuSiE, and then studies the model-selection behavior that motivates
-MoS-NMF.
+MiSo.
 
 ## Main sequence
 

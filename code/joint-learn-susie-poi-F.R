@@ -4,18 +4,19 @@
 # xi: (N, D, M)
 # gamma_bar: (N, D, K)
 # alpha: (N, D, K)
-# lambda: (N, D, K)
+# beta: (N, D, K) Gamma posterior rate
 # alpha0: (N, D)
-# lambda0: (N, D)
-mf_ELBO <- function(Y, F, xi, gamma_bar, alpha, lambda, alpha0, lambda0) {
+# beta0: (N, D) Gamma prior rate
+poisson_susie_nmf_elbo <- function(Y, F, xi, gamma_bar, alpha, beta,
+                                   alpha0, beta0) {
   N = dim(gamma_bar)[1]
   D = dim(gamma_bar)[2]
   K = dim(gamma_bar)[3]
   log_F = log(F)
   F_sum = rowSums(F)  # (K,)
 
-  E_log_beta_cond = digamma(alpha) - log(lambda)  # (N, D, K)
-  E_log_beta = rowSums(gamma_bar * E_log_beta_cond, dims = 2)  # (N, D)
+  E_log_lambda_cond = digamma(alpha) - log(beta)  # (N, D, K)
+  E_log_lambda = rowSums(gamma_bar * E_log_lambda_cond, dims = 2)  # (N, D)
 
   term1 = 0
   term2 = 0
@@ -23,8 +24,8 @@ mf_ELBO <- function(Y, F, xi, gamma_bar, alpha, lambda, alpha0, lambda0) {
   for (dd in 1:D) {
     xi_d_Y = xi[, dd, ] * Y  # (N, M)
 
-    # Σ_{i,m} ξ_{imd} y_{im} E[log β_{id}]
-    term1 = term1 + sum(E_log_beta[, dd] * rowSums(xi_d_Y))
+    # Sum_{i,m} xi_imd y_im E[log lambda_id]
+    term1 = term1 + sum(E_log_lambda[, dd] * rowSums(xi_d_Y))
 
     # Σ_{i,m} ξ_{imd} y_{im} Σ_k γ̄_{idk} log(F_{km})
     E_log_F_d = gamma_bar[, dd, ] %*% log_F  # (N, M)
@@ -36,8 +37,8 @@ mf_ELBO <- function(Y, F, xi, gamma_bar, alpha, lambda, alpha0, lambda0) {
     term4 = term4 - sum(xl * Y)
   }
 
-  # -Σ_{i,d,k} γ̄_{idk} (α_{idk}/λ_{idk}) F_sum_k
-  gbe = matrix(gamma_bar * alpha / lambda, nrow = N * D, ncol = K)
+  # -Sum_{i,d,k} gamma_bar_idk (alpha_idk/beta_idk) F_sum_k
+  gbe = matrix(gamma_bar * alpha / beta, nrow = N * D, ncol = K)
   term3 = -sum(gbe %*% F_sum)
 
   # KL discrete: Σ_{i,d,k} γ̄_{idk} (log γ̄_{idk} - log(1/K))
@@ -50,9 +51,9 @@ mf_ELBO <- function(Y, F, xi, gamma_bar, alpha, lambda, alpha0, lambda0) {
   for (k in 1:K) {
     KL_cont = KL_cont + sum(gamma_bar[, , k] * (
       (alpha[, , k] - alpha0) * digamma(alpha[, , k])
-      + (log(lambda[, , k]) - log(lambda0)) * alpha0
+      + (log(beta[, , k]) - log(beta0)) * alpha0
       - (lgamma(alpha[, , k]) - lgamma(alpha0))
-      - (lambda[, , k] - lambda0) * alpha[, , k] / lambda[, , k]
+      - (beta[, , k] - beta0) * alpha[, , k] / beta[, , k]
     ))
   }
 
@@ -124,20 +125,20 @@ init_gamma_from_L <- function(L, D, gamma_floor = 1e-4) {
   gamma_bar
 }
 
-update_mf_xi <- function(F, gamma_bar, alpha, lambda) {
+update_mf_xi <- function(F, gamma_bar, alpha, beta) {
   N = dim(gamma_bar)[1]
   D = dim(gamma_bar)[2]
   M = ncol(F)
   K = dim(gamma_bar)[3]
   log_F = log(F)
 
-  E_log_beta_cond = digamma(alpha) - log(lambda)  # (N, D, K)
-  E_log_beta = rowSums(gamma_bar * E_log_beta_cond, dims = 2)  # (N, D)
+  E_log_lambda_cond = digamma(alpha) - log(beta)  # (N, D, K)
+  E_log_lambda = rowSums(gamma_bar * E_log_lambda_cond, dims = 2)  # (N, D)
 
   ## R stores arrays with the first index varying fastest, so this reshape maps
-  ## row (n, d) to the same order as as.vector(E_log_beta).
+  ## row (n, d) to the same order as as.vector(E_log_lambda).
   log_xi_mat = matrix(gamma_bar, nrow = N * D, ncol = K) %*% log_F
-  log_xi_mat = log_xi_mat + as.vector(E_log_beta)
+  log_xi_mat = log_xi_mat + as.vector(E_log_lambda)
   log_xi = array(log_xi_mat, dim = c(N, D, M))
 
   log_xi_max = log_xi[, 1, ]
@@ -156,9 +157,9 @@ update_mf_xi <- function(F, gamma_bar, alpha, lambda) {
   xi
 }
 
-## Internal matrix factorization Poisson-SuSiE worker. Prefer the public
-## mf_poi_susie(Y, K, D, ...) and mf_poi_susie_fixed_F(Y, F, D, ...) wrappers.
-.mf_poi_susie_fit <- function(Y, F, alpha0, lambda0, max_iters = 100,
+## Internal Poisson-SuSiE-NMF worker. Prefer the public
+## poisson_susie_nmf(Y, K, D, ...) wrapper.
+.poisson_susie_nmf_fit <- function(Y, F, alpha0, beta0, max_iters = 100,
                               update_prior = TRUE, update_F = TRUE,
                               break_symmetry = FALSE, tol_dist_sim = 1e-4,
                               init_seed = NULL, gamma_step_init = 1,
@@ -201,8 +202,8 @@ update_mf_xi <- function(F, gamma_bar, alpha, lambda) {
   }
 
   alpha = array(rgamma(N * D * K, 1, 1), dim = c(N, D, K))
-  lambda = array(0, dim = c(N, D, K))
-  for (k in 1:K) lambda[, , k] = lambda0 + F_sum[k]
+  beta = array(0, dim = c(N, D, K))
+  for (k in 1:K) beta[, , k] = beta0 + F_sum[k]
 
   xi = array(1 / D, dim = c(N, D, M))
   elbo_hist = rep(NA_real_, max_iters)
@@ -244,7 +245,7 @@ update_mf_xi <- function(F, gamma_bar, alpha, lambda) {
 
     for (d in 1:D) {
       ## Gauss-Seidel-style xi refresh using all effects' latest parameters.
-      xi = update_mf_xi(F, gamma_bar, alpha, lambda)
+      xi = update_mf_xi(F, gamma_bar, alpha, beta)
 
       ## update effect d for all observations
       xi_d_Y = xi[, d, ] * Y  # (N, M)
@@ -252,28 +253,32 @@ update_mf_xi <- function(F, gamma_bar, alpha, lambda) {
 
       alpha_id = xi_d_Y_sum + alpha0[, d]  # (N,)
       for (k in 1:K) alpha[, d, k] = alpha_id
-      for (k in 1:K) lambda[, d, k] = lambda0[, d] + F_sum[k]
+      for (k in 1:K) beta[, d, k] = beta0[, d] + F_sum[k]
 
       # logprob: (N, K)
-      logprob = xi_d_Y %*% t(log_F) - alpha_id * log(outer(lambda0[, d], F_sum, "+"))
+      logprob = xi_d_Y %*% t(log_F) -
+        alpha_id * log(outer(beta0[, d], F_sum, "+"))
       logprob = logprob - apply(logprob, 1, max)
       gamma_bar_cavi = exp(logprob)
       gamma_bar_cavi = gamma_bar_cavi / rowSums(gamma_bar_cavi)
       gamma_bar[, d, ] = (1 - rho) * gamma_bar[, d, ] + rho * gamma_bar_cavi
 
       if (update_prior) {
-        E_beta_bar = rowSums(gamma_bar[, d, ] * alpha[, d, ] / lambda[, d, ])  # (N,)
-        E_log_beta_bar = rowSums(gamma_bar[, d, ] *
-                                   (digamma(alpha[, d, ]) - log(lambda[, d, ])))  # (N,)
-        target = E_log_beta_bar + log(lambda0[, d])  # (N,)
+        E_lambda_bar = rowSums(
+          gamma_bar[, d, ] * alpha[, d, ] / beta[, d, ]
+        )
+        E_log_lambda_bar = rowSums(
+          gamma_bar[, d, ] * (digamma(alpha[, d, ]) - log(beta[, d, ]))
+        )
+        target = E_log_lambda_bar + log(beta0[, d])
         alpha0[, d] = inv_digamma(target)
-        lambda0[, d] = alpha0[, d] / E_beta_bar
+        beta0[, d] = alpha0[, d] / E_lambda_bar
       }
     }
 
-    ## Refresh xi after the last gamma/alpha/lambda update before using it for
+    ## Refresh xi after the last gamma/alpha/beta update before using it for
     ## the shared-F M-step or objective evaluation.
-    xi = update_mf_xi(F, gamma_bar, alpha, lambda)
+    xi = update_mf_xi(F, gamma_bar, alpha, beta)
 
     if (update_F) {
       ## F_{km} ∝ A_{km} = Σ_{i,d} γ̄_{idk} ξ_{imd} y_{im}
@@ -287,11 +292,13 @@ update_mf_xi <- function(F, gamma_bar, alpha, lambda) {
       log_F = log(F)
       F_sum = rowSums(F)  # rep(1, K)
 
-      xi = update_mf_xi(F, gamma_bar, alpha, lambda)
+      xi = update_mf_xi(F, gamma_bar, alpha, beta)
     }
 
     if (iter == 1 || iter == max_iters || iter %% elbo_every == 0) {
-      elbo_hist[iter] = mf_ELBO(Y, F, xi, gamma_bar, alpha, lambda, alpha0, lambda0)
+      elbo_hist[iter] = poisson_susie_nmf_elbo(
+        Y, F, xi, gamma_bar, alpha, beta, alpha0, beta0
+      )
       if (!is.null(tol) && !is.na(last_elbo)) {
         rel_improve = (elbo_hist[iter] - last_elbo) / (abs(last_elbo) + 1)
         if (iter >= min_iters && rel_improve < tol) {
@@ -309,30 +316,36 @@ update_mf_xi <- function(F, gamma_bar, alpha, lambda) {
     }
   }
 
-  res = list(gamma_bar = gamma_bar, alpha = alpha, lambda = lambda,
-             alpha0 = alpha0, lambda0 = lambda0, xi = xi, F = F,
+  res = list(gamma_bar = gamma_bar, alpha = alpha, beta = beta,
+             alpha0 = alpha0, beta0 = beta0, xi = xi, F = F,
              elbo = elbo_hist, elbo_iter = which(!is.na(elbo_hist)),
              converged = converged, n_iter = n_iter)
   return(res)
 }
 
-mf_poi_susie <- function(Y, K, D, max_iters = 100, update_prior = TRUE,
-                         break_symmetry = FALSE, tol_dist_sim = 1e-4,
-                         init_seed = NULL, prior_shape = 1, prior_rate = 1,
-                         init_F = c("poisson_nmf", "random"),
-                         nmf_iters = 200, init_gamma_from_nmf = TRUE,
-                         gamma_init_floor = 1e-4,
-                         gamma_step_init = 0.1, gamma_step_ramp = 50,
-                         F_step_init = 0.05, F_step_ramp = 75,
-                         F_pseudocount = .Machine$double.eps,
-                         elbo_every = 1, tol = NULL, min_iters = 10,
-                         patience = 3) {
+poisson_susie_nmf <- function(Y, K, D, max_iters = 100,
+                              update_prior = TRUE,
+                              break_symmetry = FALSE,
+                              tol_dist_sim = 1e-4,
+                              init_seed = NULL, prior_shape = 1,
+                              prior_beta = 1,
+                              init_F = c("poisson_nmf", "random"),
+                              nmf_iters = 200,
+                              init_gamma_from_nmf = TRUE,
+                              gamma_init_floor = 1e-4,
+                              gamma_step_init = 0.1,
+                              gamma_step_ramp = 50,
+                              F_step_init = 0.05,
+                              F_step_ramp = 75,
+                              F_pseudocount = .Machine$double.eps,
+                              elbo_every = 1, tol = NULL,
+                              min_iters = 10, patience = 3) {
   N = nrow(Y)
   M = ncol(Y)
   init_F = match.arg(init_F)
 
   alpha0 = matrix(prior_shape, N, D)
-  lambda0 = matrix(prior_rate, N, D)
+  beta0 = matrix(prior_beta, N, D)
   F = matrix(1 / M, nrow = K, ncol = M)
   fit_init_F = "poisson_nmf"
 
@@ -344,11 +357,11 @@ mf_poi_susie <- function(Y, K, D, max_iters = 100, update_prior = TRUE,
     init_gamma_from_nmf = FALSE
   }
 
-  .mf_poi_susie_fit(
+  .poisson_susie_nmf_fit(
     Y = Y,
     F = F,
     alpha0 = alpha0,
-    lambda0 = lambda0,
+    beta0 = beta0,
     max_iters = max_iters,
     update_prior = update_prior,
     update_F = TRUE,
@@ -371,25 +384,26 @@ mf_poi_susie <- function(Y, K, D, max_iters = 100, update_prior = TRUE,
   )
 }
 
-mf_poi_susie_fixed_F <- function(Y, F, D, max_iters = 100,
-                                 update_prior = TRUE,
-                                 break_symmetry = FALSE,
-                                 tol_dist_sim = 1e-4,
-                                 init_seed = NULL, prior_shape = 1,
-                                 prior_rate = 1,
-                                 gamma_step_init = 0.1,
-                                 gamma_step_ramp = 50,
-                                 elbo_every = 1, tol = NULL,
-                                 min_iters = 10, patience = 3) {
+poisson_susie_nmf_fixed_F <- function(Y, F, D, max_iters = 100,
+                                      update_prior = TRUE,
+                                      break_symmetry = FALSE,
+                                      tol_dist_sim = 1e-4,
+                                      init_seed = NULL,
+                                      prior_shape = 1,
+                                      prior_beta = 1,
+                                      gamma_step_init = 0.1,
+                                      gamma_step_ramp = 50,
+                                      elbo_every = 1, tol = NULL,
+                                      min_iters = 10, patience = 3) {
   N = nrow(Y)
   alpha0 = matrix(prior_shape, N, D)
-  lambda0 = matrix(prior_rate, N, D)
+  beta0 = matrix(prior_beta, N, D)
 
-  .mf_poi_susie_fit(
+  .poisson_susie_nmf_fit(
     Y = Y,
     F = F,
     alpha0 = alpha0,
-    lambda0 = lambda0,
+    beta0 = beta0,
     max_iters = max_iters,
     update_prior = update_prior,
     update_F = FALSE,
@@ -406,3 +420,33 @@ mf_poi_susie_fixed_F <- function(Y, F, D, max_iters = 100,
     patience = patience
   )
 }
+
+## Read the Gamma posterior rate from a current or pre-freeze saved fit.
+poisson_susie_nmf_beta <- function(fit) {
+  if (!is.null(fit$beta)) return(fit$beta)
+  if (!is.null(fit$lambda)) return(fit$lambda)
+  stop("The fit contains neither a beta nor a legacy lambda rate field")
+}
+
+poisson_susie_nmf_loading_scores <- function(fit) {
+  E_lambda = fit$alpha / poisson_susie_nmf_beta(fit)
+  apply(fit$gamma_bar * E_lambda, c(1, 3), sum)
+}
+
+## Compatibility wrappers for analyses written before the API was frozen.
+mf_poi_susie <- function(Y, K, D, ..., prior_rate = NULL, prior_beta = 1) {
+  if (!is.null(prior_rate)) prior_beta = prior_rate
+  poisson_susie_nmf(
+    Y = Y, K = K, D = D, ..., prior_beta = prior_beta
+  )
+}
+
+mf_poi_susie_fixed_F <- function(Y, F, D, ..., prior_rate = NULL,
+                                 prior_beta = 1) {
+  if (!is.null(prior_rate)) prior_beta = prior_rate
+  poisson_susie_nmf_fixed_F(
+    Y = Y, F = F, D = D, ..., prior_beta = prior_beta
+  )
+}
+
+mf_ELBO <- poisson_susie_nmf_elbo

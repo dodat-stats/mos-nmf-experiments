@@ -193,7 +193,7 @@ isolates recovery of the posterior labels from the harder problem of learning
 `F`.
 
 ```{r fit-true-F0}
-fit_true_F0 = mf_poi_susie_fixed_F(
+fit_true_F0 = poisson_susie_nmf_fixed_F(
   Y = Y,
   F = F0,
   D = D,
@@ -256,7 +256,7 @@ assignments from the Poisson-NMF loading matrix, then updates `F` inside the
 variational loop with damping.
 
 ```{r fit}
-fit = mf_poi_susie(
+fit = poisson_susie_nmf(
   Y = Y,
   K = K,
   D = D,

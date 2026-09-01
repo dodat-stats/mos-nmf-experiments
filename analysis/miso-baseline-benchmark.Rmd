@@ -1,0 +1,393 @@
+---
+title: "MiSo Baseline Benchmark"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 7, fig.height = 4)
+```
+
+This file compares soft MiSo with two simple baselines:
+
+- Poisson NMF followed by k-means clustering on the fitted loading matrix.
+- MF-Poisson-SuSiE followed by k-means clustering on posterior expected loading
+  scores.
+
+The goal is not to produce the final paper benchmark. It is a compact
+side-by-side table for checking whether motif-level modeling improves
+clustering and sparse support recovery in the current simulations.
+
+```{r source-code}
+source("code/miso.R")
+```
+
+## Helpers
+
+```{r helpers}
+row_cosine = function(A, B) {
+  A_norm = sqrt(rowSums(A^2))
+  B_norm = sqrt(rowSums(B^2))
+  (A %*% t(B)) / (A_norm %o% B_norm)
+}
+
+all_permutations = function(x) {
+  if (length(x) == 1) return(matrix(x, nrow = 1))
+  do.call(rbind, lapply(seq_along(x), function(i) {
+    cbind(x[i], all_permutations(x[-i]))
+  }))
+}
+
+match_factor_rows = function(F_hat, F_true) {
+  K = nrow(F_true)
+  similarity = row_cosine(F_hat, F_true)
+  perms = all_permutations(seq_len(K))
+  scores = apply(perms, 1, function(p) {
+    sum(similarity[cbind(seq_len(K), p)])
+  })
+  learned_to_true = perms[which.max(scores), ]
+
+  list(
+    table = data.frame(
+      learned_factor = seq_len(K),
+      matched_true_factor = learned_to_true,
+      cosine = similarity[cbind(seq_len(K), learned_to_true)]
+    ),
+    learned_to_true = learned_to_true,
+    similarity = similarity
+  )
+}
+
+support_label = function(support) paste(sort(unique(support)), collapse = ",")
+
+simulate_support_scenario = function(N, M, K, group_supports, shape_vec,
+                                      factor_shape = 0.1,
+                                      factor_rate = 0.01, seed = 1) {
+  set.seed(seed)
+  S = length(group_supports)
+  n_per_group = N / S
+  grp = rep(seq_len(S), each = n_per_group)
+
+  F0 = matrix(rgamma(M * K, shape = factor_shape, rate = factor_rate),
+              nrow = K, ncol = M)
+  F0 = normalize_rows(F0)
+
+  L = matrix(0, nrow = N, ncol = K)
+  for (s in seq_len(S)) {
+    idx = which(grp == s)
+    support = group_supports[[s]]
+    L[idx, support] = matrix(
+      rgamma(length(idx) * length(support), shape = shape_vec[s], rate = 1),
+      nrow = length(idx),
+      ncol = length(support)
+    )
+  }
+
+  Y = matrix(rpois(N * M, L %*% F0), nrow = N, ncol = M)
+
+  list(
+    Y = Y,
+    F0 = F0,
+    L = L,
+    grp = grp,
+    group_supports = group_supports,
+    true_support_size = rowSums(L > 0),
+    true_support_label = apply(L > 0, 1, function(x) {
+      paste(which(x), collapse = ",")
+    }),
+    true_patterns = vapply(group_supports, support_label, character(1))
+  )
+}
+
+normalize_scores = function(scores, eps = 1e-12) {
+  scores = pmax(scores, eps)
+  scores / rowSums(scores)
+}
+
+kmeans_cluster_scores = function(scores, S, seed = 1) {
+  set.seed(seed)
+  kmeans(normalize_scores(scores), centers = S, nstart = 20)$cluster
+}
+
+map_scores_to_true = function(scores, learned_to_true) {
+  K = length(learned_to_true)
+  out = matrix(0, nrow = nrow(scores), ncol = K)
+  for (k in seq_len(K)) {
+    out[, learned_to_true[k]] = out[, learned_to_true[k]] + scores[, k]
+  }
+  out
+}
+
+support_labels_from_scores = function(scores_true_space, support_sizes) {
+  vapply(seq_len(nrow(scores_true_space)), function(i) {
+    active = order(scores_true_space[i, ], decreasing = TRUE)[
+      seq_len(support_sizes[i])
+    ]
+    paste(sort(active), collapse = ",")
+  }, character(1))
+}
+
+support_accuracy = function(scores, learned_to_true, dat) {
+  scores_true = map_scores_to_true(scores, learned_to_true)
+  mean(support_labels_from_scores(scores_true, dat$true_support_size) ==
+         dat$true_support_label)
+}
+
+gamma_uncertainty_summary = function(gamma_bar) {
+  ent = motif_gamma_entropy(gamma_bar)
+  top = apply(gamma_bar, c(1, 2), max)
+  data.frame(
+    mean_gamma_entropy = mean(ent),
+    max_gamma_entropy = max(ent),
+    mean_top_gamma = mean(top),
+    min_top_gamma = min(top)
+  )
+}
+
+fit_nmf_baseline = function(dat, K, S, seed, nmf_iters = 80) {
+  nmf_fit = poisson_nmf_init(dat$Y, K = K, max_iters = nmf_iters,
+                             init_seed = seed)
+  factor_match = match_factor_rows(nmf_fit$F, dat$F0)
+  scores = nmf_fit$L
+  z_hat = kmeans_cluster_scores(scores, S = S, seed = seed)
+
+  data.frame(
+    method = "Poisson NMF + kmeans",
+    cluster_accuracy = cluster_accuracy(z_hat, dat$grp),
+    support_accuracy = support_accuracy(scores, factor_match$learned_to_true,
+                                        dat),
+    mean_factor_cosine = mean(factor_match$table$cosine),
+    min_factor_cosine = min(factor_match$table$cosine),
+    mean_max_responsibility = NA_real_,
+    mean_gamma_entropy = NA_real_,
+    max_gamma_entropy = NA_real_,
+    mean_top_gamma = NA_real_,
+    min_top_gamma = NA_real_
+  )
+}
+
+fit_mf_baseline = function(dat, K, S, D, seed, max_iters = 35,
+                            nmf_iters = 60) {
+  mf_fit = poisson_susie_nmf(
+    Y = dat$Y,
+    K = K,
+    D = D,
+    max_iters = max_iters,
+    update_prior = TRUE,
+    init_seed = seed,
+    init_F = "poisson_nmf",
+    nmf_iters = nmf_iters,
+    init_gamma_from_nmf = TRUE,
+    elbo_every = 5,
+    tol = 5e-4,
+    min_iters = 15,
+    patience = 2
+  )
+
+  factor_match = match_factor_rows(mf_fit$F, dat$F0)
+  scores = loading_scores_from_mf(mf_fit)
+  z_hat = kmeans_cluster_scores(scores, S = S, seed = seed)
+
+  data.frame(
+    method = "MF-Poisson-SuSiE + kmeans",
+    cluster_accuracy = cluster_accuracy(z_hat, dat$grp),
+    support_accuracy = support_accuracy(scores, factor_match$learned_to_true,
+                                        dat),
+    mean_factor_cosine = mean(factor_match$table$cosine),
+    min_factor_cosine = min(factor_match$table$cosine),
+    mean_max_responsibility = NA_real_,
+    mean_gamma_entropy = NA_real_,
+    max_gamma_entropy = NA_real_,
+    mean_top_gamma = NA_real_,
+    min_top_gamma = NA_real_
+  )
+}
+
+fit_miso_method = function(dat, K, S, D, seed, max_iters = 18,
+                                n_inner = 3, mf_max_iters = 35,
+                                mf_nmf_iters = 60, block_size = 100) {
+  fit = miso(
+    Y = dat$Y,
+    K = K,
+    S = S,
+    D = D,
+    max_iters = max_iters,
+    n_inner = n_inner,
+    mf_max_iters = mf_max_iters,
+    mf_nmf_iters = mf_nmf_iters,
+    init_seed = seed,
+    update_prior = TRUE,
+    update_F = TRUE,
+    update_gamma = TRUE,
+    gamma_init_floor = 0.05,
+    gamma_step_init = 0.5,
+    gamma_step_ramp = 8,
+    F_step_init = 0.2,
+    F_step_ramp = 15,
+    tol = 1e-5,
+    min_iters = 5,
+    patience = 2,
+    block_size = block_size
+  )
+
+  factor_match = match_factor_rows(fit$F, dat$F0)
+  scores = fit$omega %*% motif_factor_scores(fit)$scores
+  uncertainty = gamma_uncertainty_summary(fit$gamma_bar)
+
+  cbind(
+    data.frame(
+      method = "Soft MiSo",
+      cluster_accuracy = cluster_accuracy(fit$z_hat, dat$grp),
+      support_accuracy = support_accuracy(scores, factor_match$learned_to_true,
+                                          dat),
+      mean_factor_cosine = mean(factor_match$table$cosine),
+      min_factor_cosine = min(factor_match$table$cosine),
+      mean_max_responsibility = mean(apply(fit$omega, 1, max))
+    ),
+    uncertainty
+  )
+}
+
+run_benchmark = function(dat, K, S, D, seed) {
+  rbind(
+    fit_nmf_baseline(dat, K = K, S = S, seed = seed),
+    fit_mf_baseline(dat, K = K, S = S, D = D, seed = seed),
+    fit_miso_method(dat, K = K, S = S, D = D, seed = seed)
+  )
+}
+
+plot_benchmark_metric = function(results, metric, main) {
+  vals = results[[metric]]
+  barplot(vals, names.arg = results$method, las = 2, ylim = c(0, 1),
+          ylab = metric, main = main, col = "gray70")
+  text(seq_along(vals) * 1.2 - 0.5, pmin(vals + 0.04, 0.96),
+       sprintf("%.2f", vals), cex = 0.8)
+}
+```
+
+## Block Scenario
+
+The block scenario has five one-factor groups and three three-factor groups.
+This is the easier setting where anchor-like single-factor groups help factor
+recovery.
+
+```{r block-simulate}
+block_supports = list(
+  c(1),
+  c(2),
+  c(3),
+  c(4),
+  c(5),
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(2, 3, 5)
+)
+
+block = simulate_support_scenario(
+  N = 320,
+  M = 350,
+  K = 5,
+  group_supports = block_supports,
+  shape_vec = c(rep(10, 5), rep(20, 3)),
+  seed = 42
+)
+
+data.frame(group = seq_along(block_supports),
+           true_active_factors = block$true_patterns)
+```
+
+```{r block-fit}
+block_results = run_benchmark(
+  dat = block,
+  K = 5,
+  S = length(block_supports),
+  D = 3,
+  seed = 1
+)
+
+block_results
+```
+
+```{r block-plots}
+plot_benchmark_metric(block_results, "cluster_accuracy",
+                      "Block scenario: cluster accuracy")
+plot_benchmark_metric(block_results, "support_accuracy",
+                      "Block scenario: support accuracy")
+plot_benchmark_metric(block_results, "mean_factor_cosine",
+                      "Block scenario: mean factor cosine")
+```
+
+## Tree Scenario
+
+The tree scenario is harder because no group occupies a single factor. All
+groups share factor 1 and branch through factors 2 or 5 before adding optional
+leaf factors.
+
+```{r tree-simulate}
+tree_supports = list(
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(1, 5, 6),
+  c(1, 5, 7),
+  c(1, 2),
+  c(1, 5)
+)
+
+tree = simulate_support_scenario(
+  N = 360,
+  M = 420,
+  K = 7,
+  group_supports = tree_supports,
+  shape_vec = rep(18, length(tree_supports)),
+  seed = 47
+)
+
+data.frame(group = seq_along(tree_supports),
+           true_active_factors = tree$true_patterns)
+```
+
+```{r tree-fit}
+tree_results = run_benchmark(
+  dat = tree,
+  K = 7,
+  S = length(tree_supports),
+  D = 3,
+  seed = 2
+)
+
+tree_results
+```
+
+```{r tree-plots}
+plot_benchmark_metric(tree_results, "cluster_accuracy",
+                      "Tree scenario: cluster accuracy")
+plot_benchmark_metric(tree_results, "support_accuracy",
+                      "Tree scenario: support accuracy")
+plot_benchmark_metric(tree_results, "mean_factor_cosine",
+                      "Tree scenario: mean factor cosine")
+```
+
+## Current Interpretation
+
+This benchmark is deliberately small, but it gives the basic empirical table a
+statistics paper will need: a reconstruction/factorization baseline, a
+per-sample sparse posterior baseline, and the motif-level model. The quantities
+to watch are not only factor recovery. The paper claim requires MiSo to
+improve motif clustering and support-pattern recovery, while `gamma_bar`
+provides additional motif uncertainty diagnostics that the baselines do not
+have.
+
+The current result is strongest in the block scenario, where soft MiSo
+improves clustering, support recovery, and factor recovery. In the tree
+scenario, the result is more nuanced: soft MiSo improves support accuracy
+relative to both baselines, but its hard cluster labels from `max.col(omega)`
+are less accurate than k-means on the baseline loading scores. That is useful
+evidence rather than a failure, because it points to the next methodological
+question: whether the motif model needs better initialization, more stable
+responsibility updates, or a tree-aware diagnostic that does not reduce shared
+branch structure to one hard cluster label.

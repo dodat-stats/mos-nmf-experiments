@@ -1,3 +1,6 @@
+## LEGACY EXPERIMENT PROTOTYPE. Not part of the frozen MiSo API.
+## Use poisson_susie_nmf() from joint-learn-susie-poi-F.R instead.
+
 ## ELBO for matrix factorization Poisson-SuSiE
 # Y: (N, M)
 # F: (K, M)

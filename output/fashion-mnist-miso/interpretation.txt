@@ -1,0 +1,63 @@
+Fashion-MNIST MiSo interpretation
+=================================
+
+Fit configuration
+  Images: 1500 ( 150 per class)
+  Selected K: 20 
+  K selected at candidate-grid boundary: TRUE 
+  Fitted S: 12 
+  Maximum D: 4 
+  Best seed: 1 
+
+Goal evaluation
+      representation in_sample_deviance_per_pixel nearest_centroid_accuracy
+ Vanilla Poisson NMF                     1.439595                 0.6733333
+                MiSo                     1.823172                 0.6488889
+ average_active_factors_per_image_90pct average_submanifold_dimension_90pct
+                                  5.788                                  NA
+                                  1.742                            1.833333
+
+  Caution: held-out likelihood was still increasing at the largest K.
+  Expand K_CANDIDATES before treating the selected K as final.
+
+Factor interpretations (post-hoc class associations)
+  F1: Dress (0.56), T-shirt/top (0.18); graph role=hub
+  F2: T-shirt/top (0.10), Sandal (0.10); graph role=leaf
+  F3: Ankle boot (0.49), Sandal (0.21); graph role=middle
+  F4: Coat (0.39), Pullover (0.32); graph role=middle
+  F5: T-shirt/top (0.10), Sandal (0.10); graph role=leaf
+  F6: T-shirt/top (0.10), Sandal (0.10); graph role=leaf
+  F7: Dress (0.31), Coat (0.28); graph role=middle
+  F8: Ankle boot (0.60), Sandal (0.38); graph role=middle
+  F9: Bag (0.49), Ankle boot (0.21); graph role=hub
+  F10: Coat (0.39), Pullover (0.28); graph role=middle
+  F11: T-shirt/top (0.10), Sandal (0.10); graph role=leaf
+  F12: Sneaker (0.58), Sandal (0.30); graph role=hub
+  F13: T-shirt/top (0.79), Shirt (0.17); graph role=hub
+  F14: Bag (0.79), Shirt (0.09); graph role=middle
+  F15: T-shirt/top (0.41), Dress (0.37); graph role=middle
+  F16: Dress (0.34), Coat (0.28); graph role=middle
+  F17: Dress (0.37), Trouser (0.31); graph role=middle
+  F18: Pullover (0.44), Shirt (0.27); graph role=leaf
+  F19: Bag (0.56), Sandal (0.14); graph role=hub
+  F20: Trouser (0.86), Dress (0.11); graph role=middle
+
+Submanifold interpretations
+  S1: classes Sneaker (0.76), Sandal (0.24); D90=1; factors F12
+  S2: classes Trouser (1.00), Dress (0.00); D90=1; factors F20
+  S3: classes Trouser (0.55), Dress (0.34); D90=3; factors F20, F1, F17
+  S4: classes Ankle boot (0.88), Sneaker (0.12); D90=1; factors F3
+  S5: classes Sneaker (0.42), Bag (0.25); D90=3; factors F12, F9, F19
+  S6: classes Ankle boot (0.59), Sandal (0.39); D90=2; factors F8, F9
+  S7: classes Bag (0.39), Sandal (0.24); D90=2; factors F3, F14
+  S8: classes Coat (0.39), Pullover (0.30); D90=2; factors F4, F10
+  S9: classes T-shirt/top (0.56), Dress (0.24); D90=3; factors F13, F15, F1
+  S10: classes T-shirt/top (1.00), Shirt (0.00); D90=1; factors F13
+  S11: classes Dress (0.33), Coat (0.28); D90=2; factors F16, F7
+  S12: classes Pullover (0.44), Shirt (0.27); D90=1; factors F18
+
+Graph interpretation
+  Most connected factors: F9, F12, F1, F19 
+  Most leaf-like factors: F2, F5, F6, F11 
+  Inspect 02-factor-atlas.png to decide whether hubs encode broad shape
+  or intensity features and leaves encode more class-specific parts.
