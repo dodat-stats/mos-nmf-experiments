@@ -33,6 +33,7 @@ MF_ITERS = if (QUICK) 3 else 30
 MF_NMF_ITERS = if (QUICK) 8 else 100
 MISO_ITERS = if (QUICK) 2 else 10
 MISO_INNER_ITERS = if (QUICK) 1 else 2
+MISO_INITIALIZATION = "distinct"
 BLOCK_SIZE = 128
 
 DATA_DIR = "data/1000-genomes/phase3-chr1"
@@ -239,8 +240,10 @@ if (file.exists(nmf_cache)) {
 
 fit_dir = file.path(
   OUTPUT_DIR,
-  sprintf("fits-%s-N%d-M%d-K%d-S%d-D%d", CACHE_VERSION, nrow(Y), ncol(Y),
-          selected_K, S, D)
+  sprintf(
+    "fits-%s-N%d-M%d-K%d-S%d-D%d-init-%s", CACHE_VERSION,
+    nrow(Y), ncol(Y), selected_K, S, D, MISO_INITIALIZATION
+  )
 )
 dir.create(fit_dir, recursive = TRUE, showWarnings = FALSE)
 fits = vector("list", length(FIT_SEEDS))
@@ -269,7 +272,7 @@ for (j in seq_along(FIT_SEEDS)) {
       update_gamma = TRUE,
       update_slot_scale = FALSE,
       gamma_init_floor = 0.05,
-      surplus_slots = "repeat",
+      motif_initialization = MISO_INITIALIZATION,
       gamma_step_init = 0.5,
       gamma_step_ramp = 8,
       F_step_init = 0.2,

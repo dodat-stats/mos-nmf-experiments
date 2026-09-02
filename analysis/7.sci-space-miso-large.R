@@ -25,6 +25,7 @@ NMF_ITERS = 35
 MF_ITERS = 12
 MISO_ITERS = 8
 MISO_INNER_ITERS = 2
+MISO_INITIALIZATION = "distinct"
 
 ACTIVE_FACTOR_THRESHOLD = 0.05
 N_NEIGHBORS = 10
@@ -66,7 +67,8 @@ fit_dir = file.path(
   paste0(
     "fits-", CACHE_VERSION,
     "-n", N_CELLS, "-m", N_GENES,
-    "-K", K, "-S", S, "-D", D
+    "-K", K, "-S", S, "-D", D,
+    "-init-", MISO_INITIALIZATION
   )
 )
 dir.create(fit_dir, recursive = TRUE, showWarnings = FALSE)
@@ -504,7 +506,7 @@ run_one_seed = function(seed) {
     update_prior = TRUE,
     update_F = TRUE,
     update_gamma = TRUE,
-    surplus_slots = "uniform",
+    motif_initialization = MISO_INITIALIZATION,
     block_size = 100
   )
 

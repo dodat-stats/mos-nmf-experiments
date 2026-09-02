@@ -295,7 +295,7 @@ fit = miso(
   update_prior = TRUE,
   update_F = FALSE,
   update_gamma = TRUE,
-  surplus_slots = "uniform",
+  motif_initialization = "distinct",
   block_size = 100
 )
 

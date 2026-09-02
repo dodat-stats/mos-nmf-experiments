@@ -272,6 +272,7 @@ run_one_fit = function(scenario, initialization, seed) {
     update_gamma = TRUE,
     update_slot_scale = FALSE,
     gamma_init_floor = 0.05,
+    motif_initialization = "threshold",
     surplus_slots = initialization,
     gamma_step_init = 0.5,
     gamma_step_ramp = 8,

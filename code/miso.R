@@ -43,10 +43,13 @@ gamma_shape_from_moments <- function(E_lambda, E_log_lambda, n_iter = 8,
 
 init_motifs_from_loading_scores <- function(scores, S, D, init_seed = NULL,
                                             min_share = 0.10,
-                                            allow_repeats = TRUE,
+                                            allow_repeats = FALSE,
                                             eps = 1e-12) {
   if (!is.null(init_seed)) set.seed(init_seed)
   K = ncol(scores)
+  if (!allow_repeats && D > K) {
+    stop("D must be no greater than K for distinct initialization.")
+  }
   scores_norm = scores / pmax(rowSums(scores), eps)
   km = kmeans(scores_norm, centers = S, nstart = 20, iter.max = 100)
   motifs = matrix(NA_integer_, nrow = S, ncol = D)
@@ -72,15 +75,19 @@ init_soft_gamma_from_loading_scores <- function(scores, S, D, init_seed = NULL,
                                                 gamma_floor = 0.05,
                                                 surplus_slots = c("repeat",
                                                                   "uniform"),
+                                                motif_initialization = c(
+                                                  "distinct", "threshold"
+                                                ),
                                                 eps = 1e-12) {
   surplus_slots = match.arg(surplus_slots)
+  motif_initialization = match.arg(motif_initialization)
   hard_init = init_motifs_from_loading_scores(
     scores = scores,
     S = S,
     D = D,
     init_seed = init_seed,
     min_share = min_share,
-    allow_repeats = TRUE,
+    allow_repeats = motif_initialization == "threshold",
     eps = eps
   )
 
@@ -91,14 +98,19 @@ init_soft_gamma_from_loading_scores <- function(scores, S, D, init_seed = NULL,
     for (d in seq_len(D)) {
       k = hard_init$motifs[s, d]
       is_surplus_repeat = seen[k]
-      if (!(surplus_slots == "uniform" && is_surplus_repeat)) {
+      if (motif_initialization == "distinct" ||
+          !(surplus_slots == "uniform" && is_surplus_repeat)) {
         gamma_bar[s, d, k] = 1 - gamma_floor + gamma_floor / K
       }
       seen[k] = TRUE
     }
   }
 
-  list(gamma_bar = gamma_bar, hard_init = hard_init)
+  list(
+    gamma_bar = gamma_bar,
+    hard_init = hard_init,
+    motif_initialization = motif_initialization
+  )
 }
 
 gamma_bar_from_motifs <- function(motifs, K, gamma_floor = 0.05) {
@@ -693,8 +705,13 @@ miso <- function(Y, K, S, D, max_iters = 50, n_inner = 5,
                     F_step_init = 0.2,
                     F_step_ramp = 20,
                     F_pseudocount = .Machine$double.eps,
-                    block_size = 100) {
+                    block_size = 100,
+                    motif_initialization = c("distinct", "threshold")) {
   surplus_slots = match.arg(surplus_slots)
+  motif_initialization = match.arg(motif_initialization)
+  if (motif_initialization == "distinct" && D > K) {
+    stop("D must be no greater than K for distinct initialization.")
+  }
   mf_fit = poisson_susie_nmf(
     Y = Y,
     K = K,
@@ -720,7 +737,8 @@ miso <- function(Y, K, S, D, max_iters = 50, n_inner = 5,
     init_seed = init_seed,
     min_share = motif_min_share,
     gamma_floor = gamma_init_floor,
-    surplus_slots = surplus_slots
+    surplus_slots = surplus_slots,
+    motif_initialization = motif_initialization
   )
 
   fit = miso_fixed_gamma(
@@ -752,6 +770,7 @@ miso <- function(Y, K, S, D, max_iters = 50, n_inner = 5,
 
   fit$mf_fit = mf_fit
   fit$gamma_init = gamma_init
+  fit$motif_initialization = motif_initialization
   fit
 }
 

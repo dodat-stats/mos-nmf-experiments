@@ -34,6 +34,7 @@
 /output/sci-space-miso/
 /output/sci-space-miso-large/
 /output/1000-genomes-chr1-miso/
+/output/pcawg-miso/
 analysis/figure
 analysis/*png
 analysis/*html

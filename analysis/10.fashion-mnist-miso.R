@@ -35,6 +35,7 @@ MF_ITERS = if (QUICK) 3 else 25
 MF_NMF_ITERS = if (QUICK) 8 else 50
 MISO_ITERS = if (QUICK) 2 else 10
 MISO_INNER_ITERS = if (QUICK) 1 else 2
+MISO_INITIALIZATION = "distinct"
 BLOCK_SIZE = 98
 
 DATA_DIR = "data/fashion-mnist"
@@ -261,7 +262,7 @@ fit_dir = file.path(
   OUTPUT_DIR,
   paste0(
     "fits-", CACHE_VERSION, "-n", nrow(Y), "-K", selected_K,
-    "-S", S, "-D", D
+    "-S", S, "-D", D, "-init-", MISO_INITIALIZATION
   )
 )
 dir.create(fit_dir, recursive = TRUE, showWarnings = FALSE)
@@ -289,6 +290,7 @@ for (j in seq_along(FIT_SEEDS)) {
       update_F = TRUE,
       update_gamma = TRUE,
       update_slot_scale = FALSE,
+      motif_initialization = MISO_INITIALIZATION,
       tol = 1e-5,
       min_iters = min(5, MISO_ITERS),
       patience = 2,

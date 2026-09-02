@@ -460,7 +460,113 @@ In the current implementation, $F$ is initialized by MF-Poisson-SuSiE with
 learned $F$, and the subsequent MiSo updates alternate between motif
 responsibilities, motif posteriors, Gamma loading posteriors, empirical-Bayes
 prior updates, and optionally factor updates. This initialization is important
-because the full problem is highly nonconvex.
+because the full problem is highly nonconvex. We next specify the initialization
+used to convert observation-level preliminary loadings into motif-level factor
+directions.
+
+\subsection{Initialization}
+
+MiSo is initialized from an MF-Poisson-SuSiE fit with learned factors. Let
+$\bar\gamma^{\mathrm{MF}}_{idk}$, $\alpha^{\mathrm{MF}}_{idk}$, and
+$\beta^{\mathrm{MF}}_{idk}$ denote its variational parameters. The preliminary
+expected loading of factor $k$ in observation $i$ is
+\[
+  \widetilde L_{ik}
+  =
+  \sum_{d=1}^D
+  \bar\gamma^{\mathrm{MF}}_{idk}
+  \frac{\alpha^{\mathrm{MF}}_{idk}}
+       {\beta^{\mathrm{MF}}_{idk}}.
+\]
+We remove observation-level scale for the purpose of constructing initial
+motifs,
+\[
+  x_{ik}
+  =
+  \frac{\widetilde L_{ik}}
+       {\sum_{h=1}^K\widetilde L_{ih}},
+  \qquad x_i\in\Delta^{K-1},
+\]
+and obtain $S$ preliminary centers by solving
+\[
+  (\widehat z,\widehat c)
+  =
+  \arg\min_{z_1,\ldots,z_N,\,c_1,\ldots,c_S}
+  \sum_{i=1}^N \lVert x_i-c_{z_i}\rVert_2^2,
+  \qquad c_s\in\Delta^{K-1}.
+\]
+Thus the preliminary loadings are observation-specific, whereas the factor
+directions used to initialize MiSo are selected from the center of each
+candidate motif.
+
+For motif $s$, let
+\[
+  r_s(1),\ldots,r_s(K)
+\]
+order the factors so that
+\[
+  c_{s,r_s(1)}\geq c_{s,r_s(2)}\geq\cdots\geq c_{s,r_s(K)}.
+\]
+Assuming $D\leq K$, MiSo uses a distinct top-$D$ initialization,
+\begin{equation}
+  \kappa_{sd}^{(0)}=r_s(d),
+  \qquad d=1,\ldots,D,
+  \label{eq:distinct-top-D-init}
+\end{equation}
+and initializes the motif-level factor posterior by
+\begin{equation}
+  \bar\gamma_{sdk}^{(0)}
+  =
+  (1-\varepsilon_\gamma)
+  \one\{k=\kappa_{sd}^{(0)}\}
+  +\frac{\varepsilon_\gamma}{K},
+  \qquad k=1,\ldots,K,
+  \label{eq:gamma-init}
+\end{equation}
+for a small $\varepsilon_\gamma>0$. The implementation uses
+$\varepsilon_\gamma=0.05$ by default. The ordering in
+\eqref{eq:distinct-top-D-init} is only a deterministic convention; the motif
+dimensions remain permutation invariant.
+
+Distinctness is important. A threshold-and-recycle rule would first retain an
+ordered set
+\[
+  A_s(\tau)
+  =
+  (a_{s1},\ldots,a_{sq_s})
+  =
+  \{r_s(j):c_{s,r_s(j)}\geq\tau\}
+\]
+and then fill the $D$ dimensions according to
+\[
+  \kappa_{sd}^{\mathrm{recycle}}
+  =
+  a_{s,\,1+((d-1)\bmod q_s)}.
+\]
+When only one factor passes the threshold, this assigns the same factor to all
+$D$ dimensions. Conditional on motif $s$, the resulting loading is
+\[
+  L_i
+  =
+  \sum_{d=1}^D\lambda_{id}e_{a_{s1}}
+  =
+  \left(\sum_{d=1}^D\lambda_{id}\right)e_{a_{s1}},
+\]
+which is a one-dimensional ray regardless of the nominal value of $D$. MiSo
+therefore initializes the top $D$ directions without replacement. If $D$ is
+over-specified, unnecessary directions are removed later through the
+empirical-Bayes dimension diagnostic rather than duplicated at initialization.
+
+The initial mixture weights and responsibilities are set to
+\[
+  \pi_s^{(0)}=\frac{1}{S},
+  \qquad
+  \omega_{is}^{(0)}=\frac{1}{S}.
+\]
+The preliminary partition is consequently used to construct motif centers, but
+is not imposed as a hard initial assignment of observations to motifs. The
+Gamma variational and prior parameters are initialized symmetrically across
+motifs and are then updated using the raw count matrix.
 
 \subsection{Empirical-Bayes dimension selection}
 
@@ -499,10 +605,13 @@ identity.
 \caption{MiSo variational empirical-Bayes fitting}
 \small
 \begin{algorithmic}[1]
-\State Initialize $F$, typically using MF-Poisson-SuSiE with learned factors.
-\State Initialize $\omega_{is}$ by clustering preliminary loading scores.
-\State Initialize $\bar{\gamma}_{sdk}$ from cluster-level loading patterns.
-\State Initialize $\alpha_{isd}$, $\beta_{sd}$, $\pi_s$, and
+\State Fit MF-Poisson-SuSiE to initialize $F$ and preliminary loadings
+$\widetilde L$.
+\State Cluster normalized preliminary loadings into $S$ centers $c_s$.
+\State Initialize $\bar{\gamma}_{sdk}$ from the distinct top $D$ factors of
+each center using \eqref{eq:gamma-init}.
+\State Initialize $\omega_{is}=1/S$ and $\pi_s=1/S$.
+\State Initialize $\alpha_{isd}$, $\beta_{sd}$, and
 $(\alpha_{sd}^0,\beta_{sd}^0)$.
 \For{$t=1,\ldots,T$}
   \State Update $\xi_{isdm}$ in feature blocks.
@@ -972,8 +1081,9 @@ report targeted pair uncertainty, not only mean entropy.
 Fit each motif with a nominal dimension larger than the true motif dimension.
 The target behavior is that extra dimensions either have small ARD prior mean
 $\alpha_{sd}^0/\beta_{sd}^0$ or small posterior loading mass. The current
-single-seed evidence suggests that diffuse-surplus initialization helps, while
-repeated-surplus initialization duplicates active dimensions. A full paper needs
+default therefore initializes the top $D$ center factors without replacement;
+recycling a shorter thresholded list can duplicate active dimensions and create
+an artificial rank-one motif. A full paper needs
 multi-seed threshold sweeps for $\widehat{D}_s$ and comparisons against the
 true motif dimensions after matching fitted motifs to groups.
 
@@ -1032,6 +1142,8 @@ The paper should include ablations for:
 \begin{enumerate}
   \item fixed versus learned $F$;
   \item initialization from Poisson NMF versus MF-Poisson-SuSiE;
+  \item distinct top-$D$ initialization versus threshold-and-recycle and
+  random-soft initialization;
   \item sensitivity to the number of motifs $S$;
   \item sensitivity to nominal $D$ and the ARD threshold $\tau$;
   \item sensitivity to duplicate-factor and correlated-factor strength;

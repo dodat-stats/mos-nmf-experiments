@@ -12,6 +12,17 @@ For an interactive session, source `code/miso.R`; it loads all three public
 functions. The main implementation files are `poisson-susie.R`,
 `joint-learn-susie-poi-F.R`, and `miso.R`.
 
+## MiSo initialization
+
+By default, `miso()` clusters row-normalized preliminary loadings from the
+Poisson-SuSiE-NMF fit and initializes each motif with the top `D` distinct
+factors in its cluster center. Thus the default requires `D <= K` and avoids
+collapsing several dimensions onto one repeated factor. Use
+`motif_initialization = "threshold"` only to reproduce the older
+threshold-and-recycle initializer. For that legacy initializer,
+`motif_min_share` controls the threshold and `surplus_slots` controls whether
+recycled dimensions are repeated or initialized uniformly.
+
 ## Notation
 
 `lambda` denotes a nonnegative latent loading. `beta`, `beta0`, and `beta_sd`
