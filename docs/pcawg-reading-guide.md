@@ -1,7 +1,7 @@
 # PCAWG SBS96: data, scientific goal, and NMF analysis
 
 This is a focused reading guide for the MiSo pilot in
-`analysis/12.pcawg-miso.R`.
+`analysis/real-data-exploration/12.pcawg-miso.R`.
 
 ## 1. What the data are
 

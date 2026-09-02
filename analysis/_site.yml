@@ -17,6 +17,10 @@ navbar:
       href: 4.overspecify-K-mf-poi-susie.html
     - text: "5. Tree scenario"
       href: 5.tree-scenario.html
+  - text: MiSo
+    menu:
+    - text: "6. Anchor and tree scenarios"
+      href: 6.miso-anchor-tree.html
   - text: About
     href: about.html
   - text: License

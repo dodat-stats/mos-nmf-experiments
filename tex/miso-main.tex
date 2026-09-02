@@ -528,34 +528,11 @@ $\varepsilon_\gamma=0.05$ by default. The ordering in
 \eqref{eq:distinct-top-D-init} is only a deterministic convention; the motif
 dimensions remain permutation invariant.
 
-Distinctness is important. A threshold-and-recycle rule would first retain an
-ordered set
-\[
-  A_s(\tau)
-  =
-  (a_{s1},\ldots,a_{sq_s})
-  =
-  \{r_s(j):c_{s,r_s(j)}\geq\tau\}
-\]
-and then fill the $D$ dimensions according to
-\[
-  \kappa_{sd}^{\mathrm{recycle}}
-  =
-  a_{s,\,1+((d-1)\bmod q_s)}.
-\]
-When only one factor passes the threshold, this assigns the same factor to all
-$D$ dimensions. Conditional on motif $s$, the resulting loading is
-\[
-  L_i
-  =
-  \sum_{d=1}^D\lambda_{id}e_{a_{s1}}
-  =
-  \left(\sum_{d=1}^D\lambda_{id}\right)e_{a_{s1}},
-\]
-which is a one-dimensional ray regardless of the nominal value of $D$. MiSo
-therefore initializes the top $D$ directions without replacement. If $D$ is
+Because $r_s$ is a permutation and $D\leq K$, the indices
+$\kappa_{s1}^{(0)},\ldots,\kappa_{sD}^{(0)}$ are pairwise distinct. Thus every
+motif begins with $D$ different candidate factor directions. If $D$ is
 over-specified, unnecessary directions are removed later through the
-empirical-Bayes dimension diagnostic rather than duplicated at initialization.
+empirical-Bayes dimension diagnostic.
 
 The initial mixture weights and responsibilities are set to
 \[
@@ -1023,8 +1000,7 @@ The main baselines should be:
   \item Poisson NMF followed by clustering of normalized loading scores;
   \item MF-Poisson-SuSiE followed by clustering of posterior loading scores;
   \item sparse NMF baselines with tuned sparsity penalties, if available;
-  \item ablations of MiSo with fixed $F$, learned $F$, and different
-  initialization schemes.
+  \item ablations of MiSo with fixed versus learned $F$.
 \end{enumerate}
 The first two baselines are already implemented in the current benchmark code.
 
@@ -1071,7 +1047,7 @@ statistically interchangeable. Global entropy is not sufficient; the paper
 should report pair-specific posterior split metrics for the duplicated factors.
 
 \paragraph{Correlated factors.}
-Generate factor rows with controlled correlation strength. This tests whether
+Generate correlated factor rows at controlled strengths. This tests whether
 MiSo can express targeted ambiguity between correlated factors. The current
 evidence suggests that raw entropy can be misleading because weak dimensions may
 become globally diffuse. The final paper version should sweep correlation strength and
@@ -1081,11 +1057,9 @@ report targeted pair uncertainty, not only mean entropy.
 Fit each motif with a nominal dimension larger than the true motif dimension.
 The target behavior is that extra dimensions either have small ARD prior mean
 $\alpha_{sd}^0/\beta_{sd}^0$ or small posterior loading mass. The current
-default therefore initializes the top $D$ center factors without replacement;
-recycling a shorter thresholded list can duplicate active dimensions and create
-an artificial rank-one motif. A full paper needs
-multi-seed threshold sweeps for $\widehat{D}_s$ and comparisons against the
-true motif dimensions after matching fitted motifs to groups.
+default initializes the top $D$ center factors without replacement. A full
+paper needs multi-seed threshold sweeps for $\widehat{D}_s$ and comparisons
+against the true motif dimensions after matching fitted motifs to groups.
 
 \subsection{Real data}
 
@@ -1128,7 +1102,7 @@ small number of biologically interpretable hub, branch, and leaf factors.
 A companion table should report only the quantities needed to support this
 picture: held-out deviance relative to Poisson NMF, the average number of active
 factors per cell, the effective dimensions of the highlighted motifs,
-stability across initializations, and external agreement with cell annotations
+stability across random seeds, and external agreement with cell annotations
 or an independently estimated pseudotime. Thus the intended claim is not that
 MiSo improves reconstruction at all costs, but that it preserves predictive fit
 while replacing a high-dimensional loading display by recurring motifs,
@@ -1141,16 +1115,13 @@ post-processing rules can be reported separately as a sensitivity analysis.
 The paper should include ablations for:
 \begin{enumerate}
   \item fixed versus learned $F$;
-  \item initialization from Poisson NMF versus MF-Poisson-SuSiE;
-  \item distinct top-$D$ initialization versus threshold-and-recycle and
-  random-soft initialization;
   \item sensitivity to the number of motifs $S$;
   \item sensitivity to nominal $D$ and the ARD threshold $\tau$;
   \item sensitivity to duplicate-factor and correlated-factor strength;
-  \item stability across random initializations.
+  \item stability across random seeds.
 \end{enumerate}
 These experiments are needed to distinguish the proposed statistical model from
-an initialization artifact.
+an optimization artifact.
 
 \section{Discussion}
 
@@ -1168,6 +1139,44 @@ tree/no-anchor simulations and in overfitted-factor uncertainty diagnostics.
 The main open issues are stable dimension selection, broader multi-seed
 benchmarks, model-selection guidance for $K$, $S$, and $D$, and a real-data
 example with scientifically interpretable motifs.
+
+\clearpage
+\appendix
+
+\section{Threshold-and-recycle initialization}
+\label{app:threshold-recycle}
+
+For reproducibility, we record an earlier initialization rule that is retained
+in the software for historical ablations. Using the motif center $c_s$ and
+factor ordering $r_s$ defined in the main text, it first forms the ordered set
+\[
+  A_s(\tau_{\mathrm{init}})
+  =
+  (a_{s1},\ldots,a_{sq_s})
+  =
+  \{r_s(j):c_{s,r_s(j)}\geq\tau_{\mathrm{init}}\}.
+\]
+If this set is empty, it is replaced by $A_s=(r_s(1))$. The rule then fills the
+$D$ dimensions cyclically,
+\[
+  \kappa_{sd}^{\mathrm{recycle}}
+  =
+  a_{s,\,1+((d-1)\bmod q_s)},
+  \qquad d=1,\ldots,D.
+\]
+When $q_s=1$, every dimension is assigned the same factor. Conditional on motif
+$s$, the resulting factor-space loading is
+\[
+  L_i
+  =
+  \sum_{d=1}^D\lambda_{id}e_{a_{s1}}
+  =
+  \left(\sum_{d=1}^D\lambda_{id}\right)e_{a_{s1}},
+\]
+which lies on a one-dimensional ray regardless of the nominal value of $D$.
+More generally, recycling constrains the initialization to at most $q_s$
+distinct directions. This can create an artificially low-dimensional starting
+point when only a few center weights exceed $\tau_{\mathrm{init}}$.
 
 \bibliographystyle{plainnat}
 \bibliography{sparsity}

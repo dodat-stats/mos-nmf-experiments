@@ -1,7 +1,7 @@
 ## Quick sensitivity check for the global NMF rank K.
 ##
 ## Run from the project root:
-##   Rscript --vanilla analysis/8.sci-space-K-sensitivity.R
+##   Rscript --vanilla analysis/real-data-exploration/8.sci-space-K-sensitivity.R
 ##
 ## This reuses the exact cells, genes, and Poisson-thinning split from the
 ## larger sci-Space experiment. It fits only Poisson NMF, so it is much faster
@@ -32,7 +32,7 @@ OUTPUT_DIR = "output/sci-space-miso-large/K-sensitivity"
 ## -------------------------------------------------------------------------
 
 if (!file.exists(INPUT_FILE)) {
-  stop("Run analysis/7.sci-space-miso-large.R first.")
+  stop("Run analysis/real-data-exploration/7.sci-space-miso-large.R first.")
 }
 source("code/miso-benchmark-utils.R")
 dir.create(OUTPUT_DIR, recursive = TRUE, showWarnings = FALSE)

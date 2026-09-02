@@ -1,7 +1,7 @@
 ## MiSo pilot analysis of the sci-Space mouse embryo data.
 ##
 ## Run this file from the project root:
-##   Rscript analysis/6.sci-space-miso.R
+##   Rscript analysis/real-data-exploration/6.sci-space-miso.R
 ##
 ## The first run is intentionally small. It is meant to verify the full
 ## workflow and produce interpretable motif summaries before scaling up.

@@ -3,10 +3,10 @@
 ## PCAWG SBS96 pilot for MiSo.
 ##
 ## Run from the project root:
-##   Rscript --vanilla analysis/12.pcawg-miso.R
+##   Rscript --vanilla analysis/real-data-exploration/12.pcawg-miso.R
 ##
 ## For a short end-to-end check:
-##   Rscript --vanilla analysis/12.pcawg-miso.R --quick
+##   Rscript --vanilla analysis/real-data-exploration/12.pcawg-miso.R --quick
 ##
 ## The model is fitted only to the observed mutation counts. Published PCAWG
 ## signatures, exposures, cancer types, and aetiologies are used afterward for

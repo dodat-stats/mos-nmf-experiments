@@ -33,6 +33,10 @@ MiSo.
    group uses multiple factors and support recovery depends on shared
    co-occurrence structure.
 
+6. [MiSo with anchor and tree scenarios](6.miso-anchor-tree.html): the full
+   MiSo model fitted with the true $K$, $S$, and $D$ in both the anchor
+   and no-anchor tree settings.
+
 ## Project question
 
 The central question is whether posterior objects such as

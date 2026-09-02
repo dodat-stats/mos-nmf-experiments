@@ -8,7 +8,7 @@ tracked by git.
 Run from the project root:
 
 ```sh
-Rscript --vanilla analysis/12.pcawg-miso.R
+Rscript --vanilla analysis/real-data-exploration/12.pcawg-miso.R
 ```
 
 The script creates `data/pcawg/` and downloads checksum-verified copies of:
@@ -27,7 +27,7 @@ distribute data from Alexandrov et al. (2020).
 Use `--quick` for a short end-to-end check:
 
 ```sh
-Rscript --vanilla analysis/12.pcawg-miso.R --quick
+Rscript --vanilla analysis/real-data-exploration/12.pcawg-miso.R --quick
 ```
 
 See [`docs/pcawg-reading-guide.md`](../docs/pcawg-reading-guide.md) for the data

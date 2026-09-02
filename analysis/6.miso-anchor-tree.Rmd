@@ -1,0 +1,482 @@
+---
+title: "6. MiSo with Anchor and Tree Scenarios"
+site: workflowr::wflow_site
+output:
+  workflowr::wflow_html:
+    toc: true
+    toc_float: true
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 8, fig.height = 4.5)
+options(stringsAsFactors = FALSE)
+```
+
+This page revisits the two support-pattern simulations introduced in Analyses
+2 and 5, now using the full MiSo model. The first scenario contains
+single-factor anchor motifs. The second has a tree structure and no
+single-factor motif. In both cases MiSo learns the factor matrix and is fitted
+with the true number of factors $K$, motifs $S$, and maximum motif
+dimension $D$.
+
+```{r source-code}
+source("code/miso-benchmark-utils.R")
+```
+
+## Simulation design
+
+The anchor supports are the eight groups from Analysis 2. The tree supports
+are the six groups from Analysis 5. The early pages used larger matrices; here
+we keep the same structural scenarios but use $N=480$ observations and
+$M=500$ features so the demonstration is easy to rerun.
+
+```{r design}
+anchor_supports = list(
+  c(1),
+  c(2),
+  c(3),
+  c(4),
+  c(5),
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(2, 3, 5)
+)
+
+tree_supports = list(
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(1, 5, 6),
+  c(1, 5, 7),
+  c(1, 2),
+  c(1, 5)
+)
+
+scenario_design = data.frame(
+  scenario = c("anchor", "tree/no-anchor"),
+  N = c(480, 480),
+  M = c(500, 500),
+  K = c(5, 7),
+  S = c(length(anchor_supports), length(tree_supports)),
+  D = c(3, 3),
+  support_sizes = c("1 or 3", "2 or 3")
+)
+scenario_design
+```
+
+Here $D=3$ is the true maximum dimension in both scenarios. Some individual
+motifs have dimension smaller than three; MiSo still uses the common maximum
+$D$, with the Gamma prior parameters available to diagnose inactive
+dimensions.
+
+```{r simulate}
+anchor_data = simulate_support_scenario(
+  N = 480,
+  M = 500,
+  K = 5,
+  group_supports = anchor_supports,
+  shape_vec = c(rep(10, 5), rep(20, 3)),
+  seed = 42
+)
+
+tree_data = simulate_support_scenario(
+  N = 480,
+  M = 500,
+  K = 7,
+  group_supports = tree_supports,
+  shape_vec = rep(18, length(tree_supports)),
+  seed = 47
+)
+
+data.frame(
+  scenario = c("anchor", "tree/no-anchor"),
+  total_count = c(sum(anchor_data$Y), sum(tree_data$Y)),
+  nonzero_entries = c(sum(anchor_data$Y > 0), sum(tree_data$Y > 0))
+)
+```
+
+## Fit MiSo with the true $K,S,D$
+
+The factors are unknown to the fitting algorithm. The true factor matrix and
+support labels are used only after fitting to evaluate recovery.
+
+```{r fit-helper}
+fit_correct_miso = function(dat, K, S, D, seed, cache_name) {
+  cache_dir = file.path("analysis", "cache", "6.miso-anchor-tree-v1")
+  dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+  cache_file = file.path(cache_dir, paste0(cache_name, ".rds"))
+
+  if (file.exists(cache_file)) return(readRDS(cache_file))
+
+  fit = miso(
+    Y = dat$Y,
+    K = K,
+    S = S,
+    D = D,
+    max_iters = 30,
+    n_inner = 3,
+    mf_max_iters = 30,
+    mf_nmf_iters = 60,
+    init_seed = seed,
+    update_prior = TRUE,
+    update_F = TRUE,
+    update_gamma = TRUE,
+    update_slot_scale = FALSE,
+    motif_initialization = "distinct",
+    tol = 1e-5,
+    min_iters = 5,
+    patience = 2,
+    block_size = 100
+  )
+  saveRDS(fit, cache_file)
+  fit
+}
+```
+
+```{r fit-models}
+anchor_fit = fit_correct_miso(
+  anchor_data,
+  K = 5,
+  S = length(anchor_supports),
+  D = 3,
+  seed = 1,
+  cache_name = "anchor-K5-S8-D3-seed1-iter30"
+)
+
+tree_fit = fit_correct_miso(
+  tree_data,
+  K = 7,
+  S = length(tree_supports),
+  D = 3,
+  seed = 2,
+  cache_name = "tree-K7-S6-D3-seed2-iter30"
+)
+
+stopifnot(
+  nrow(anchor_fit$F) == 5,
+  all(dim(anchor_fit$gamma_bar) == c(8, 3, 5)),
+  nrow(tree_fit$F) == 7,
+  all(dim(tree_fit$gamma_bar) == c(6, 3, 7))
+)
+```
+
+## Recovery summaries
+
+Factor and motif labels are permutation invariant. The following helpers match
+learned factors to true factors by cosine similarity and match fitted motifs to
+true groups by total posterior responsibility.
+
+### How the plotted quantities are computed
+
+The plots use the following fitted variational quantities:
+
+- `omega[n, s]` is the posterior probability that observation $n$ belongs to
+  motif $s$, $\omega_{ns}=q(z_n=s)$.
+- `gamma_bar[s, d, k]` is the posterior probability that dimension $d$ of
+  motif $s$ selects factor $k$, $\bar\gamma_{sdk}=q(c_{sd}=k)$.
+- `alpha[n, s, d]` and `beta_sd[s, d]` are the shape and rate of the
+  variational Gamma distribution for the loading in dimension $d$. Therefore
+  its posterior mean is $\alpha_{nsd}/\beta_{sd}$. Here $\beta$ is the Gamma
+  rate; the object called `lambda_mean` inside `motif_factor_scores()` is an
+  average *loading*, not a rate parameter.
+- `slot_scale[s, d]`, denoted $\tau_{sd}$ below, is an optional multiplicative
+  scale for that dimension. This page sets `update_slot_scale = FALSE`, so
+  $\tau_{sd}=1$ for every motif and dimension.
+
+For each motif and dimension, `motif_factor_scores()` first computes the
+responsibility-weighted mean loading
+
+$$
+\bar\ell_{sd}
+=
+\frac{\sum_{n=1}^N \omega_{ns}
+      \alpha_{nsd}/\beta_{sd}}
+     {\sum_{n=1}^N \omega_{ns}}.
+$$
+
+It then aggregates the $D$ dimensions into the unnormalized motif--factor
+strength
+
+$$
+A_{sk}=\sum_{d=1}^D
+       \tau_{sd}\,\bar\ell_{sd}\,\bar\gamma_{sdk}.
+$$
+
+The fitted $S\times K$ heatmap displays the row-normalized matrix
+$\widetilde A_{sk}=A_{sk}/\sum_{j=1}^K A_{sj}$. Thus a cell is the estimated
+share of a motif's total loading strength carried by a factor. It is not merely
+$\sum_d\bar\gamma_{sdk}$: dimensions with larger expected loadings contribute
+more. Every row of the displayed matrix sums to one.
+The implementation applies a $10^{-12}$ floor to denominators and fitted
+strengths only to avoid numerical division by zero.
+
+For comparison, if the true support of group $g$ is ${\cal A}_g$, the true
+$S\times K$ map is
+
+$$
+T_{gk}=\frac{\mathbf{1}\{k\in {\cal A}_g\}}{|{\cal A}_g|}.
+$$
+
+This gives equal share to every truly active factor and also makes each row sum
+to one. It records support membership, whereas the fitted map records estimated
+loading strength; the comparison therefore emphasizes whether the fitted mass
+falls on the correct support rather than requiring equal fitted weights.
+
+Because both factor and motif labels are arbitrary, the display applies two
+permutations after fitting. Learned factors are matched to true factors by the
+one-to-one assignment that maximizes the sum of cosine similarities between
+rows of the learned and true factor matrices. Fitted motifs are matched to true
+groups by the one-to-one assignment that maximizes
+$\sum_n\omega_{n,s(g)}\mathbf{1}\{g_n=g\}$. These steps only reorder rows or
+columns for evaluation; the true labels are never supplied to `miso()`.
+
+The posterior-responsibility heatmap displays
+
+$$
+R_{gh}=\frac{1}{N_g}\sum_{n:g_n=g}\omega_{n,s(h)},
+$$
+
+where $s(h)$ is the fitted motif aligned to true group $h$. Its rows sum to
+one. A large diagonal entry means that observations from true group $g$ place
+most of their posterior mass on the corresponding fitted motif; off-diagonal
+mass shows uncertainty or merging between motifs. All heatmaps use the same
+fixed color range from zero to one, and the printed cell values are these
+matrices rounded to two decimal places.
+
+```{r evaluation-helpers}
+match_motifs_to_groups = function(omega, true_group) {
+  groups = sort(unique(true_group))
+  S = ncol(omega)
+  stopifnot(S == length(groups))
+
+  score = sapply(groups, function(g) {
+    colSums(omega[true_group == g, , drop = FALSE])
+  })
+
+  if (requireNamespace("clue", quietly = TRUE)) {
+    fit_to_true = as.integer(clue::solve_LSAP(max(score) - score))
+  } else {
+    permutations = all_permutations(seq_len(S))
+    objective = apply(permutations, 1, function(candidate) {
+      sum(score[cbind(seq_len(S), candidate)])
+    })
+    fit_to_true = permutations[which.max(objective), ]
+  }
+
+  true_to_fit = match(seq_len(S), fit_to_true)
+  list(
+    fit_to_true = fit_to_true,
+    true_to_fit = true_to_fit,
+    score = score
+  )
+}
+
+true_motif_matrix = function(supports, K) {
+  # T[g, k] = 1 / |A_g| for a factor in the true support A_g, and zero otherwise.
+  out = matrix(0, nrow = length(supports), ncol = K)
+  for (s in seq_along(supports)) {
+    out[s, supports[[s]]] = 1 / length(supports[[s]])
+  }
+  out
+}
+
+evaluate_miso = function(fit, dat, supports, scenario) {
+  # Match learned labels to truth only for evaluation and plotting.
+  factor_match = match_factor_rows(fit$F, dat$F0)
+  motif_match = match_motifs_to_groups(fit$omega, dat$grp)
+
+  # Observation-level expected factor loadings are used for support metrics.
+  observation_scores = miso_observation_factor_scores(fit)
+
+  # A[s, k] = sum_d tau[s, d] * ell_bar[s, d] * gamma_bar[s, d, k].
+  motif_scores = motif_factor_scores(fit)$scores
+  # Reorder factor columns into true-factor order, normalize each motif to sum 1,
+  # and reorder motif rows into true-group order.
+  motif_scores = map_scores_to_true(
+    motif_scores, factor_match$learned_to_true
+  )
+  motif_scores = normalize_scores(motif_scores)
+  motif_scores = motif_scores[motif_match$true_to_fit, , drop = FALSE]
+
+  # R[g, s] is the mean posterior responsibility for fitted motif s among
+  # observations generated from true group g.
+  group_responsibility = do.call(rbind, lapply(seq_along(supports), function(g) {
+    colMeans(fit$omega[dat$grp == g, , drop = FALSE])
+  }))
+  group_responsibility = group_responsibility[
+    , motif_match$true_to_fit, drop = FALSE
+  ]
+
+  soft_mass = mean(fit$omega[cbind(
+    seq_len(nrow(fit$omega)), motif_match$true_to_fit[dat$grp]
+  )])
+
+  metrics = data.frame(
+    scenario = scenario,
+    true_K = nrow(dat$F0),
+    true_S = length(supports),
+    true_D = max(lengths(supports)),
+    soft_motif_accuracy = soft_mass,
+    exact_support_accuracy = support_accuracy(
+      observation_scores, factor_match$learned_to_true, dat
+    ),
+    support_jaccard = support_jaccard(
+      observation_scores, factor_match$learned_to_true, dat
+    ),
+    mean_factor_cosine = mean(factor_match$table$cosine),
+    mean_assignment_certainty = mean(apply(fit$omega, 1, max))
+  )
+
+  motif_summary = do.call(rbind, lapply(seq_along(supports), function(g) {
+    n_active = length(supports[[g]])
+    estimated = order(motif_scores[g, ], decreasing = TRUE)[seq_len(n_active)]
+    data.frame(
+      true_group = paste0("G", g),
+      matched_fitted_motif = paste0("S", motif_match$true_to_fit[g]),
+      true_factors = support_label(supports[[g]]),
+      estimated_top_factors = support_label(estimated),
+      posterior_mass_on_true_factors = round(
+        sum(motif_scores[g, supports[[g]]]), 3
+      )
+    )
+  }))
+
+  list(
+    metrics = metrics,
+    factor_match = factor_match,
+    motif_match = motif_match,
+    group_responsibility = group_responsibility,
+    true_motif_share = true_motif_matrix(supports, nrow(dat$F0)),
+    fitted_motif_share = motif_scores,
+    motif_summary = motif_summary
+  )
+}
+
+plot_heatmap = function(mat, main, xlab, ylab, xlabels, ylabels,
+                        digits = 2) {
+  # Every displayed matrix is on [0, 1]; text reports its cell values directly.
+  image(
+    x = seq_len(ncol(mat)), y = seq_len(nrow(mat)), z = t(mat),
+    axes = FALSE, xlab = xlab, ylab = ylab, main = main,
+    zlim = c(0, 1), col = hcl.colors(100, "YlOrRd")
+  )
+  axis(1, at = seq_len(ncol(mat)), labels = xlabels)
+  axis(2, at = seq_len(nrow(mat)), labels = ylabels, las = 1)
+  for (i in seq_len(nrow(mat))) {
+    for (j in seq_len(ncol(mat))) {
+      text(j, i, sprintf(paste0("%.", digits, "f"), mat[i, j]), cex = 0.65)
+    }
+  }
+  box()
+}
+
+plot_scenario = function(result, scenario) {
+  S = nrow(result$true_motif_share)
+  K = ncol(result$true_motif_share)
+  group_labels = paste0("G", seq_len(S))
+  factor_labels = paste0("F", seq_len(K))
+
+  op = par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+  on.exit(par(op))
+  plot_heatmap(
+    result$true_motif_share,
+    paste(scenario, "true motif-factor map"),
+    "True factor", "True group", factor_labels, group_labels
+  )
+  plot_heatmap(
+    result$fitted_motif_share,
+    paste(scenario, "fitted motif-factor map"),
+    "Matched true factor", "Matched true group", factor_labels, group_labels
+  )
+}
+```
+
+```{r evaluate}
+anchor_result = evaluate_miso(
+  anchor_fit, anchor_data, anchor_supports, "anchor"
+)
+tree_result = evaluate_miso(
+  tree_fit, tree_data, tree_supports, "tree/no-anchor"
+)
+
+recovery_summary = rbind(anchor_result$metrics, tree_result$metrics)
+numeric_columns = vapply(recovery_summary, is.numeric, logical(1))
+recovery_summary[numeric_columns] = round(
+  recovery_summary[numeric_columns], 3
+)
+recovery_summary
+```
+
+These two correctly specified fits separate two kinds of recovery. The anchor
+fit recovers the observation-level supports and factor matrix very accurately,
+but some one-factor groups share posterior mass across duplicate fitted motifs
+associated with a containing three-factor submanifold. In the tree fit, the
+four maximal three-factor motifs are recovered cleanly, while the two nested
+two-factor motifs remain harder to separate from their parent branches. Thus
+the example demonstrates both the benefit of shared motif structure and the
+remaining optimization challenge for nested submanifolds.
+
+## Anchor scenario
+
+The anchor scenario contains five one-factor motifs and three three-factor
+motifs. It checks whether MiSo can learn elementary factor directions and reuse
+them inside composite motifs.
+
+```{r anchor-motif-summary}
+anchor_result$motif_summary
+```
+
+```{r anchor-factor-map, fig.height=4.5}
+plot_scenario(anchor_result, "Anchor")
+```
+
+```{r anchor-responsibilities, fig.width=6, fig.height=5}
+plot_heatmap(
+  anchor_result$group_responsibility,
+  "Anchor: mean posterior motif responsibility",
+  "Fitted motif, aligned to group", "True group",
+  paste0("G", seq_len(ncol(anchor_result$group_responsibility))),
+  paste0("G", seq_len(nrow(anchor_result$group_responsibility)))
+)
+```
+
+The diagonal responsibility pattern checks motif recovery directly, while the
+factor maps separate dictionary recovery from motif recovery. The fitted map is
+shown after label matching only; the true labels were not used during fitting.
+
+## Tree scenario
+
+Every tree motif contains factor 1 and then follows one of two branches,
+through factor 2 or factor 5. Four motifs add a branch-specific leaf. Because
+there are no one-factor groups, recovery must use repeated co-occurrence across
+motifs rather than isolated anchors.
+
+```{r tree-motif-summary}
+tree_result$motif_summary
+```
+
+```{r tree-factor-map, fig.height=4.5}
+plot_scenario(tree_result, "Tree")
+```
+
+```{r tree-responsibilities, fig.width=6, fig.height=5}
+plot_heatmap(
+  tree_result$group_responsibility,
+  "Tree: mean posterior motif responsibility",
+  "Fitted motif, aligned to group", "True group",
+  paste0("G", seq_len(ncol(tree_result$group_responsibility))),
+  paste0("G", seq_len(nrow(tree_result$group_responsibility)))
+)
+```
+
+## Interpretation
+
+The anchor scenario is the easier sanity check: the singleton motifs expose
+each factor separately, and the composite motifs test whether those parts are
+recombined correctly. The tree scenario is more diagnostic of MiSo because its
+factors are identifiable only through shared motif structure. With $K$,
+$S$, and $D$ fixed at their true values, the displays focus on recovery of
+the learned factors, motif-factor associations, and posterior motif
+responsibilities rather than on model selection.

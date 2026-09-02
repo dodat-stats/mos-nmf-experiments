@@ -3,10 +3,10 @@
 ## Poisson MiSo analysis of 1000 Genomes phase-3 chromosome 1 genotypes.
 ##
 ## Run from the project root:
-##   Rscript --vanilla analysis/11.1000-genomes-chr1-miso.R
+##   Rscript --vanilla analysis/real-data-exploration/11.1000-genomes-chr1-miso.R
 ##
 ## Fast end-to-end check:
-##   Rscript --vanilla analysis/11.1000-genomes-chr1-miso.R --quick
+##   Rscript --vanilla analysis/real-data-exploration/11.1000-genomes-chr1-miso.R --quick
 ##
 ## Population and super-population labels are never used for fitting. They are
 ## used only after fitting to interpret the learned factors and submanifolds.

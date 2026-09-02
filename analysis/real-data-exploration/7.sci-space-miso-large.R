@@ -1,7 +1,7 @@
 ## Larger sci-Space experiment for evaluating the practical goals of MiSo.
 ##
 ## Run from the project root:
-##   Rscript --vanilla analysis/7.sci-space-miso-large.R
+##   Rscript --vanilla analysis/real-data-exploration/7.sci-space-miso-large.R
 ##
 ## The script caches preprocessing and every fitted seed. If it is interrupted,
 ## run the same command again and it will continue from the cached results.
@@ -59,7 +59,7 @@ if (USE_HELDOUT_SELECTED_K && file.exists(K_SELECTION_FILE)) {
 } else if (USE_HELDOUT_SELECTED_K) {
   message(
     "No held-out K selection file was found; using fallback K=", K,
-    ". Run analysis/8.sci-space-K-sensitivity.R to create it."
+    ". Run analysis/real-data-exploration/8.sci-space-K-sensitivity.R to create it."
   )
 }
 fit_dir = file.path(

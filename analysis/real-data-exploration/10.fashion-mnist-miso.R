@@ -3,10 +3,10 @@
 ## Fashion-MNIST experiment for MiSo.
 ##
 ## Run from the project root:
-##   Rscript --vanilla analysis/10.fashion-mnist-miso.R
+##   Rscript --vanilla analysis/real-data-exploration/10.fashion-mnist-miso.R
 ##
 ## For a fast end-to-end check:
-##   Rscript --vanilla analysis/10.fashion-mnist-miso.R --quick
+##   Rscript --vanilla analysis/real-data-exploration/10.fashion-mnist-miso.R --quick
 ##
 ## The labels are never used to fit NMF or MiSo. They are used only afterward
 ## to interpret and evaluate the learned factors and submanifolds.
