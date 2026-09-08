@@ -40,6 +40,7 @@ match_factor_rows <- function(F_hat, F_true) {
 support_label <- function(support) paste(sort(unique(support)), collapse = ",")
 
 simulate_support_scenario <- function(N, M, K, group_supports, shape_vec,
+                                      loading_rate = 1,
                                       factor_shape = 0.1,
                                       factor_rate = 0.01, seed = 1,
                                       train_fraction = NULL) {
@@ -57,7 +58,11 @@ simulate_support_scenario <- function(N, M, K, group_supports, shape_vec,
     idx = which(grp == s)
     support = group_supports[[s]]
     L[idx, support] = matrix(
-      rgamma(length(idx) * length(support), shape = shape_vec[s], rate = 1),
+      rgamma(
+        length(idx) * length(support),
+        shape = shape_vec[s],
+        rate = loading_rate
+      ),
       nrow = length(idx),
       ncol = length(support)
     )

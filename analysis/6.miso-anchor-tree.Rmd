@@ -18,9 +18,9 @@ options(stringsAsFactors = FALSE)
 This page revisits the two support-pattern simulations introduced in Analyses
 2 and 5, now using the full MiSo model. The first scenario contains
 single-factor anchor motifs. The second has a tree structure and no
-single-factor motif. In both cases MiSo learns the factor matrix and is fitted
-with the true number of factors $K$, motifs $S$, and maximum motif
-dimension $D$.
+single-factor motif. MiSo learns the factor matrix in both cases. The fitted
+numbers of factors $K$, motifs $S$, and maximum motif dimension $D$ are set
+separately at the beginning of each scenario section.
 
 ```{r source-code}
 source("code/miso-benchmark-utils.R")
@@ -97,18 +97,69 @@ data.frame(
 )
 ```
 
-## Fit MiSo with the true $K,S,D$
+### Shared fitting helper
 
-The factors are unknown to the fitting algorithm. The true factor matrix and
-support labels are used only after fitting to evaluate recovery.
+The factors are unknown to the fitting algorithm. Each scenario is fitted
+three times from the same MF-Poisson-SuSiE preliminary fit logic but with different
+motif initializations:
+
+1. `distinct` selects the top $D$ center factors without replacement;
+2. `threshold` retains center factors with at least 10% loading share and
+   recycles those factors when fewer than $D$ are retained;
+3. `aligned_mf` uses the top $D$ distinct factors as alignment anchors, aligns
+   the exchangeable MF slots within each preliminary cluster, and initializes
+   each motif slot from a loading-weighted average of the corresponding
+   MF factor-selection posteriors.
+
+Specifically, let $p_i(d)$ be the MF slot aligned to motif slot $d$ for
+observation $i$, and let $w_{i,p_i(d)}$ be that slot's share of the
+observation's expected total loading. For the observations in preliminary
+cluster $C_s$, the new initialization is
+
+$$
+\bar\gamma^{(0)}_{sdk}
+=
+(1-\varepsilon_\gamma)
+\frac{
+  \sum_{i\in C_s}w_{i,p_i(d)}
+  \bar\gamma^{\mathrm{MF}}_{i,p_i(d),k}
+}{
+  \sum_{i\in C_s}w_{i,p_i(d)}
+}
++\frac{\varepsilon_\gamma}{K}.
+$$
+
+The one-to-one alignment maximizes the MF posterior expected loading assigned
+to the distinct anchor factors. Normalizing the loading weights within each
+observation prevents high-count observations from dominating the cluster
+average.
+
+The true factor matrix and support labels are used only after fitting to
+evaluate recovery. Cache filenames are generated from the scenario, fitted
+$K,S,D$, seed, and initialization, so changing a setting creates a new fit.
 
 ```{r fit-helper}
-fit_correct_miso = function(dat, K, S, D, seed, cache_name) {
-  cache_dir = file.path("analysis", "cache", "6.miso-anchor-tree-v1")
+fit_miso_scenario = function(dat, scenario, K, S, D, seed,
+                             motif_initialization) {
+  motif_initialization = match.arg(
+    motif_initialization, c("distinct", "threshold", "aligned_mf")
+  )
+  cache_dir = file.path("analysis", "cache", "6.miso-anchor-tree-v2")
   dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
-  cache_file = file.path(cache_dir, paste0(cache_name, ".rds"))
+  cache_name = sprintf(
+    "%s-K%d-S%d-D%d-seed%d-%s-iter30.rds",
+    scenario, K, S, D, seed, motif_initialization
+  )
+  cache_file = file.path(cache_dir, cache_name)
 
   if (file.exists(cache_file)) return(readRDS(cache_file))
+  legacy_cache_file = file.path(
+    "analysis", "cache", "6.miso-anchor-tree-v1",
+    sprintf("%s-K%d-S%d-D%d-seed%d-iter30.rds", scenario, K, S, D, seed)
+  )
+  if (motif_initialization == "distinct" && file.exists(legacy_cache_file)) {
+    return(readRDS(legacy_cache_file))
+  }
 
   fit = miso(
     Y = dat$Y,
@@ -124,7 +175,9 @@ fit_correct_miso = function(dat, K, S, D, seed, cache_name) {
     update_F = TRUE,
     update_gamma = TRUE,
     update_slot_scale = FALSE,
-    motif_initialization = "distinct",
+    motif_initialization = motif_initialization,
+    motif_min_share = 0.10,
+    surplus_slots = "repeat",
     tol = 1e-5,
     min_iters = 5,
     patience = 2,
@@ -135,40 +188,13 @@ fit_correct_miso = function(dat, K, S, D, seed, cache_name) {
 }
 ```
 
-```{r fit-models}
-anchor_fit = fit_correct_miso(
-  anchor_data,
-  K = 5,
-  S = length(anchor_supports),
-  D = 3,
-  seed = 1,
-  cache_name = "anchor-K5-S8-D3-seed1-iter30"
-)
-
-tree_fit = fit_correct_miso(
-  tree_data,
-  K = 7,
-  S = length(tree_supports),
-  D = 3,
-  seed = 2,
-  cache_name = "tree-K7-S6-D3-seed2-iter30"
-)
-
-stopifnot(
-  nrow(anchor_fit$F) == 5,
-  all(dim(anchor_fit$gamma_bar) == c(8, 3, 5)),
-  nrow(tree_fit$F) == 7,
-  all(dim(tree_fit$gamma_bar) == c(6, 3, 7))
-)
-```
-
-## Recovery summaries
+### Recovery summaries
 
 Factor and motif labels are permutation invariant. The following helpers match
 learned factors to true factors by cosine similarity and match fitted motifs to
 true groups by total posterior responsibility.
 
-### How the plotted quantities are computed
+#### How the plotted quantities are computed
 
 The plots use the following fitted variational quantities:
 
@@ -246,26 +272,95 @@ fixed color range from zero to one, and the printed cell values are these
 matrices rounded to two decimal places.
 
 ```{r evaluation-helpers}
-match_motifs_to_groups = function(omega, true_group) {
-  groups = sort(unique(true_group))
-  S = ncol(omega)
-  stopifnot(S == length(groups))
-
-  score = sapply(groups, function(g) {
-    colSums(omega[true_group == g, , drop = FALSE])
-  })
+maximum_weight_assignment = function(score) {
+  n = max(nrow(score), ncol(score))
+  padded = matrix(0, nrow = n, ncol = n)
+  padded[seq_len(nrow(score)), seq_len(ncol(score))] = score
 
   if (requireNamespace("clue", quietly = TRUE)) {
-    fit_to_true = as.integer(clue::solve_LSAP(max(score) - score))
-  } else {
-    permutations = all_permutations(seq_len(S))
-    objective = apply(permutations, 1, function(candidate) {
-      sum(score[cbind(seq_len(S), candidate)])
-    })
-    fit_to_true = permutations[which.max(objective), ]
+    return(as.integer(clue::solve_LSAP(padded, maximum = TRUE)))
   }
 
-  true_to_fit = match(seq_len(S), fit_to_true)
+  assignment = rep(NA_integer_, n)
+  available_rows = seq_len(n)
+  available_columns = seq_len(n)
+  for (j in seq_len(n)) {
+    candidate = which(
+      padded[available_rows, available_columns, drop = FALSE] ==
+        max(padded[available_rows, available_columns, drop = FALSE]),
+      arr.ind = TRUE
+    )[1, ]
+    row = available_rows[candidate[1]]
+    column = available_columns[candidate[2]]
+    assignment[row] = column
+    available_rows = setdiff(available_rows, row)
+    available_columns = setdiff(available_columns, column)
+  }
+  assignment
+}
+
+match_factor_rows = function(F_hat, F_true) {
+  similarity = row_cosine(F_hat, F_true)
+  assignment = maximum_weight_assignment(similarity)
+  learned_to_true = rep(NA_integer_, nrow(F_hat))
+  matched = assignment[seq_len(nrow(F_hat))]
+  learned_to_true[matched <= nrow(F_true)] =
+    matched[matched <= nrow(F_true)]
+
+  unmatched = which(is.na(learned_to_true))
+  if (length(unmatched) > 0) {
+    learned_to_true[unmatched] = max.col(
+      similarity[unmatched, , drop = FALSE], ties.method = "first"
+    )
+  }
+  attr(learned_to_true, "true_K") = nrow(F_true)
+
+  list(
+    table = data.frame(
+      learned_factor = seq_len(nrow(F_hat)),
+      matched_true_factor = as.integer(learned_to_true),
+      cosine = similarity[cbind(seq_len(nrow(F_hat)), learned_to_true)]
+    ),
+    learned_to_true = learned_to_true,
+    similarity = similarity
+  )
+}
+
+map_scores_to_true = function(scores, learned_to_true) {
+  true_K = attr(learned_to_true, "true_K")
+  if (is.null(true_K)) true_K = max(learned_to_true)
+  out = matrix(0, nrow = nrow(scores), ncol = true_K)
+  for (k in seq_along(learned_to_true)) {
+    out[, learned_to_true[k]] = out[, learned_to_true[k]] + scores[, k]
+  }
+  out
+}
+
+match_motifs_to_groups = function(omega, true_group) {
+  groups = sort(unique(true_group))
+  S_fit = ncol(omega)
+
+  score = vapply(groups, function(g) {
+    colSums(omega[true_group == g, , drop = FALSE])
+  }, numeric(S_fit))
+
+  assignment = maximum_weight_assignment(score)
+  fit_to_true = assignment[seq_len(S_fit)]
+  unmatched_fits = which(fit_to_true > length(groups))
+  if (length(unmatched_fits) > 0) {
+    fit_to_true[unmatched_fits] = max.col(
+      score[unmatched_fits, , drop = FALSE], ties.method = "first"
+    )
+  }
+
+  true_to_fit = match(seq_along(groups), fit_to_true)
+  unmatched_groups = which(is.na(true_to_fit))
+  if (length(unmatched_groups) > 0) {
+    true_to_fit[unmatched_groups] = vapply(unmatched_groups, function(g) {
+      which.max(score[, g])
+    }, integer(1))
+  }
+
   list(
     fit_to_true = fit_to_true,
     true_to_fit = true_to_fit,
@@ -280,6 +375,11 @@ true_motif_matrix = function(supports, K) {
     out[s, supports[[s]]] = 1 / length(supports[[s]])
   }
   out
+}
+
+distinct_slot_winners = function(gamma_bar) {
+  winners = apply(gamma_bar, c(1, 2), which.max)
+  apply(winners, 1, function(x) length(unique(x)))
 }
 
 evaluate_miso = function(fit, dat, supports, scenario) {
@@ -318,6 +418,21 @@ evaluate_miso = function(fit, dat, supports, scenario) {
     true_K = nrow(dat$F0),
     true_S = length(supports),
     true_D = max(lengths(supports)),
+    fitted_K = nrow(fit$F),
+    fitted_S = ncol(fit$omega),
+    fitted_D = dim(fit$gamma_bar)[2],
+    median_initial_distinct_factors = median(
+      distinct_slot_winners(fit$gamma_init$gamma_bar)
+    ),
+    median_final_distinct_factors = median(
+      distinct_slot_winners(fit$gamma_bar)
+    ),
+    mean_initial_gamma_entropy = mean(
+      motif_gamma_entropy(fit$gamma_init$gamma_bar)
+    ),
+    mean_initial_top_gamma = mean(
+      apply(fit$gamma_init$gamma_bar, c(1, 2), max)
+    ),
     soft_motif_accuracy = soft_mass,
     exact_support_accuracy = support_accuracy(
       observation_scores, factor_match$learned_to_true, dat
@@ -393,52 +508,141 @@ plot_scenario = function(result, scenario) {
 }
 ```
 
-```{r evaluate}
-anchor_result = evaluate_miso(
-  anchor_fit, anchor_data, anchor_supports, "anchor"
-)
-tree_result = evaluate_miso(
-  tree_fit, tree_data, tree_supports, "tree/no-anchor"
-)
-
-recovery_summary = rbind(anchor_result$metrics, tree_result$metrics)
-numeric_columns = vapply(recovery_summary, is.numeric, logical(1))
-recovery_summary[numeric_columns] = round(
-  recovery_summary[numeric_columns], 3
-)
-recovery_summary
-```
-
-These two correctly specified fits separate two kinds of recovery. The anchor
-fit recovers the observation-level supports and factor matrix very accurately,
-but some one-factor groups share posterior mass across duplicate fitted motifs
-associated with a containing three-factor submanifold. In the tree fit, the
-four maximal three-factor motifs are recovered cleanly, while the two nested
-two-factor motifs remain harder to separate from their parent branches. Thus
-the example demonstrates both the benefit of shared motif structure and the
-remaining optimization challenge for nested submanifolds.
-
 ## Anchor scenario
 
 The anchor scenario contains five one-factor motifs and three three-factor
 motifs. It checks whether MiSo can learn elementary factor directions and reuse
 them inside composite motifs.
 
+### Choose the fitted dimensions
+
+Edit the first three values in the following chunk to choose the fitted
+$K,S,D$ for the anchor analysis. The defaults are the true values. The
+`distinct` and `aligned_mf` require
+`ANCHOR_FIT_D <= ANCHOR_FIT_K`.
+
+```{r anchor-fit-settings}
+ANCHOR_FIT_K = 5
+ANCHOR_FIT_S = 8
+ANCHOR_FIT_D = 3
+ANCHOR_FIT_SEED = 1
+
+data.frame(
+  fitted_K = ANCHOR_FIT_K,
+  fitted_S = ANCHOR_FIT_S,
+  fitted_D = ANCHOR_FIT_D,
+  seed = ANCHOR_FIT_SEED
+)
+```
+
+### Fit with three initializations
+
+```{r anchor-fit-models}
+anchor_fit_distinct = fit_miso_scenario(
+  anchor_data,
+  scenario = "anchor",
+  K = ANCHOR_FIT_K,
+  S = ANCHOR_FIT_S,
+  D = ANCHOR_FIT_D,
+  seed = ANCHOR_FIT_SEED,
+  motif_initialization = "distinct"
+)
+
+anchor_fit_threshold = fit_miso_scenario(
+  anchor_data,
+  scenario = "anchor",
+  K = ANCHOR_FIT_K,
+  S = ANCHOR_FIT_S,
+  D = ANCHOR_FIT_D,
+  seed = ANCHOR_FIT_SEED,
+  motif_initialization = "threshold"
+)
+
+anchor_fit_aligned_mf = fit_miso_scenario(
+  anchor_data,
+  scenario = "anchor",
+  K = ANCHOR_FIT_K,
+  S = ANCHOR_FIT_S,
+  D = ANCHOR_FIT_D,
+  seed = ANCHOR_FIT_SEED,
+  motif_initialization = "aligned_mf"
+)
+
+stopifnot(
+  all(dim(anchor_fit_distinct$gamma_bar) ==
+        c(ANCHOR_FIT_S, ANCHOR_FIT_D, ANCHOR_FIT_K)),
+  all(dim(anchor_fit_threshold$gamma_bar) ==
+        c(ANCHOR_FIT_S, ANCHOR_FIT_D, ANCHOR_FIT_K)),
+  all(dim(anchor_fit_aligned_mf$gamma_bar) ==
+        c(ANCHOR_FIT_S, ANCHOR_FIT_D, ANCHOR_FIT_K))
+)
+```
+
+### Compare recovery
+
+```{r anchor-evaluate}
+anchor_result_distinct = evaluate_miso(
+  anchor_fit_distinct, anchor_data, anchor_supports, "anchor"
+)
+anchor_result_threshold = evaluate_miso(
+  anchor_fit_threshold, anchor_data, anchor_supports, "anchor"
+)
+anchor_result_aligned_mf = evaluate_miso(
+  anchor_fit_aligned_mf, anchor_data, anchor_supports, "anchor"
+)
+
+anchor_recovery_summary = rbind(
+  transform(anchor_result_distinct$metrics, initialization = "distinct"),
+  transform(anchor_result_threshold$metrics,
+            initialization = "threshold/recycle"),
+  transform(anchor_result_aligned_mf$metrics,
+            initialization = "aligned MF posterior")
+)
+numeric_columns = vapply(anchor_recovery_summary, is.numeric, logical(1))
+anchor_recovery_summary[numeric_columns] = round(
+  anchor_recovery_summary[numeric_columns], 3
+)
+anchor_recovery_summary
+```
+
 ```{r anchor-motif-summary}
-anchor_result$motif_summary
+rbind(
+  cbind(initialization = "distinct",
+        anchor_result_distinct$motif_summary),
+  cbind(initialization = "threshold/recycle",
+        anchor_result_threshold$motif_summary),
+  cbind(initialization = "aligned MF posterior",
+        anchor_result_aligned_mf$motif_summary)
+)
 ```
 
-```{r anchor-factor-map, fig.height=4.5}
-plot_scenario(anchor_result, "Anchor")
+```{r anchor-factor-maps, fig.height=4.5}
+plot_scenario(anchor_result_distinct, "Anchor, distinct initialization")
+plot_scenario(anchor_result_threshold, "Anchor, threshold/recycle initialization")
+plot_scenario(anchor_result_aligned_mf, "Anchor, aligned MF initialization")
 ```
 
-```{r anchor-responsibilities, fig.width=6, fig.height=5}
+```{r anchor-responsibilities, fig.width=6, fig.height=5, fig.show='hold'}
 plot_heatmap(
-  anchor_result$group_responsibility,
-  "Anchor: mean posterior motif responsibility",
+  anchor_result_distinct$group_responsibility,
+  "Anchor, distinct: mean posterior motif responsibility",
   "Fitted motif, aligned to group", "True group",
-  paste0("G", seq_len(ncol(anchor_result$group_responsibility))),
-  paste0("G", seq_len(nrow(anchor_result$group_responsibility)))
+  paste0("G", seq_len(ncol(anchor_result_distinct$group_responsibility))),
+  paste0("G", seq_len(nrow(anchor_result_distinct$group_responsibility)))
+)
+plot_heatmap(
+  anchor_result_threshold$group_responsibility,
+  "Anchor, threshold/recycle: mean posterior motif responsibility",
+  "Fitted motif, aligned to group", "True group",
+  paste0("G", seq_len(ncol(anchor_result_threshold$group_responsibility))),
+  paste0("G", seq_len(nrow(anchor_result_threshold$group_responsibility)))
+)
+plot_heatmap(
+  anchor_result_aligned_mf$group_responsibility,
+  "Anchor, aligned MF: mean posterior motif responsibility",
+  "Fitted motif, aligned to group", "True group",
+  paste0("G", seq_len(ncol(anchor_result_aligned_mf$group_responsibility))),
+  paste0("G", seq_len(nrow(anchor_result_aligned_mf$group_responsibility)))
 )
 ```
 
@@ -453,30 +657,153 @@ through factor 2 or factor 5. Four motifs add a branch-specific leaf. Because
 there are no one-factor groups, recovery must use repeated co-occurrence across
 motifs rather than isolated anchors.
 
-```{r tree-motif-summary}
-tree_result$motif_summary
-```
+### Choose the fitted dimensions
 
-```{r tree-factor-map, fig.height=4.5}
-plot_scenario(tree_result, "Tree")
-```
+Edit the first three values in the following chunk to choose the fitted
+$K,S,D$ for the tree analysis. The defaults are the true values. The
+`distinct` and `aligned_mf` require `TREE_FIT_D <= TREE_FIT_K`.
 
-```{r tree-responsibilities, fig.width=6, fig.height=5}
-plot_heatmap(
-  tree_result$group_responsibility,
-  "Tree: mean posterior motif responsibility",
-  "Fitted motif, aligned to group", "True group",
-  paste0("G", seq_len(ncol(tree_result$group_responsibility))),
-  paste0("G", seq_len(nrow(tree_result$group_responsibility)))
+```{r tree-fit-settings}
+TREE_FIT_K = 7
+TREE_FIT_S = 6
+TREE_FIT_D = 3
+TREE_FIT_SEED = 2
+
+data.frame(
+  fitted_K = TREE_FIT_K,
+  fitted_S = TREE_FIT_S,
+  fitted_D = TREE_FIT_D,
+  seed = TREE_FIT_SEED
 )
 ```
 
-## Interpretation
+### Fit with three initializations
+
+```{r tree-fit-models}
+tree_fit_distinct = fit_miso_scenario(
+  tree_data,
+  scenario = "tree",
+  K = TREE_FIT_K,
+  S = TREE_FIT_S,
+  D = TREE_FIT_D,
+  seed = TREE_FIT_SEED,
+  motif_initialization = "distinct"
+)
+
+tree_fit_threshold = fit_miso_scenario(
+  tree_data,
+  scenario = "tree",
+  K = TREE_FIT_K,
+  S = TREE_FIT_S,
+  D = TREE_FIT_D,
+  seed = TREE_FIT_SEED,
+  motif_initialization = "threshold"
+)
+
+tree_fit_aligned_mf = fit_miso_scenario(
+  tree_data,
+  scenario = "tree",
+  K = TREE_FIT_K,
+  S = TREE_FIT_S,
+  D = TREE_FIT_D,
+  seed = TREE_FIT_SEED,
+  motif_initialization = "aligned_mf"
+)
+
+stopifnot(
+  all(dim(tree_fit_distinct$gamma_bar) ==
+        c(TREE_FIT_S, TREE_FIT_D, TREE_FIT_K)),
+  all(dim(tree_fit_threshold$gamma_bar) ==
+        c(TREE_FIT_S, TREE_FIT_D, TREE_FIT_K)),
+  all(dim(tree_fit_aligned_mf$gamma_bar) ==
+        c(TREE_FIT_S, TREE_FIT_D, TREE_FIT_K))
+)
+```
+
+### Compare recovery
+
+```{r tree-evaluate}
+tree_result_distinct = evaluate_miso(
+  tree_fit_distinct, tree_data, tree_supports, "tree/no-anchor"
+)
+tree_result_threshold = evaluate_miso(
+  tree_fit_threshold, tree_data, tree_supports, "tree/no-anchor"
+)
+tree_result_aligned_mf = evaluate_miso(
+  tree_fit_aligned_mf, tree_data, tree_supports, "tree/no-anchor"
+)
+
+tree_recovery_summary = rbind(
+  transform(tree_result_distinct$metrics, initialization = "distinct"),
+  transform(tree_result_threshold$metrics,
+            initialization = "threshold/recycle"),
+  transform(tree_result_aligned_mf$metrics,
+            initialization = "aligned MF posterior")
+)
+numeric_columns = vapply(tree_recovery_summary, is.numeric, logical(1))
+tree_recovery_summary[numeric_columns] = round(
+  tree_recovery_summary[numeric_columns], 3
+)
+tree_recovery_summary
+```
+
+```{r tree-motif-summary}
+rbind(
+  cbind(initialization = "distinct",
+        tree_result_distinct$motif_summary),
+  cbind(initialization = "threshold/recycle",
+        tree_result_threshold$motif_summary),
+  cbind(initialization = "aligned MF posterior",
+        tree_result_aligned_mf$motif_summary)
+)
+```
+
+```{r tree-factor-maps, fig.height=4.5}
+plot_scenario(tree_result_distinct, "Tree, distinct initialization")
+plot_scenario(tree_result_threshold, "Tree, threshold/recycle initialization")
+plot_scenario(tree_result_aligned_mf, "Tree, aligned MF initialization")
+```
+
+```{r tree-responsibilities, fig.width=6, fig.height=5, fig.show='hold'}
+plot_heatmap(
+  tree_result_distinct$group_responsibility,
+  "Tree, distinct: mean posterior motif responsibility",
+  "Fitted motif, aligned to group", "True group",
+  paste0("G", seq_len(ncol(tree_result_distinct$group_responsibility))),
+  paste0("G", seq_len(nrow(tree_result_distinct$group_responsibility)))
+)
+plot_heatmap(
+  tree_result_threshold$group_responsibility,
+  "Tree, threshold/recycle: mean posterior motif responsibility",
+  "Fitted motif, aligned to group", "True group",
+  paste0("G", seq_len(ncol(tree_result_threshold$group_responsibility))),
+  paste0("G", seq_len(nrow(tree_result_threshold$group_responsibility)))
+)
+plot_heatmap(
+  tree_result_aligned_mf$group_responsibility,
+  "Tree, aligned MF: mean posterior motif responsibility",
+  "Fitted motif, aligned to group", "True group",
+  paste0("G", seq_len(ncol(tree_result_aligned_mf$group_responsibility))),
+  paste0("G", seq_len(nrow(tree_result_aligned_mf$group_responsibility)))
+)
+```
+
+### Interpretation across scenarios
 
 The anchor scenario is the easier sanity check: the singleton motifs expose
 each factor separately, and the composite motifs test whether those parts are
 recombined correctly. The tree scenario is more diagnostic of MiSo because its
-factors are identifiable only through shared motif structure. With $K$,
-$S$, and $D$ fixed at their true values, the displays focus on recovery of
-the learned factors, motif-factor associations, and posterior motif
-responsibilities rather than on model selection.
+factors are identifiable only through shared motif structure. Within each
+scenario, the three fits hold $K,S,D$ and the random seed fixed, so differences
+in recovery can be attributed to the motif initialization. Changing the
+scenario-specific settings above makes it possible to study under- or
+over-specification without modifying the fitting and evaluation code.
+
+In the default runs, `aligned_mf` begins with three distinct factor directions
+per motif in both scenarios. In the anchor scenario it attains the same high
+soft motif accuracy as threshold/recycle, while its median final number of
+distinct directions is two rather than one. In the tree scenario it retains a
+median of three distinct directions and combines high motif accuracy with the
+best support recovery of the three initializations. This is the intended
+compromise: retain the dimensional coverage of distinct initialization while
+using the uncertainty already learned by MF-Poisson-SuSiE.

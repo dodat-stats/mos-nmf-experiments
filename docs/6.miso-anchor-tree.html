@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+
+
+<title>6. MiSo with Anchor and Tree Scenarios</title>
+
+<script src="site_libs/header-attrs-2.30/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.13.2/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<link href="site_libs/font-awesome-6.5.2/css/all.min.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet" />
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/main/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">MiSo Experiments</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    MF Poisson SuSiE
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="1.poisson-susie.html">1. Poisson SuSiE</a>
+    </li>
+    <li>
+      <a href="2.joint-learn-susie-poi-F.html">2. Joint learning of F</a>
+    </li>
+    <li>
+      <a href="3.overspecify-D-mf-poi-susie.html">3. Overspecified D</a>
+    </li>
+    <li>
+      <a href="4.overspecify-K-mf-poi-susie.html">4. Overspecified K</a>
+    </li>
+    <li>
+      <a href="5.tree-scenario.html">5. Tree scenario</a>
+    </li>
+  </ul>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    MiSo
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="6.miso-anchor-tree.html">6. Anchor and tree scenarios</a>
+    </li>
+  </ul>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://github.com/dodat-stats/mos-nmf-experiments">
+    <span class="fab fa-github"></span>
+     
+    Source code
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">6. MiSo with Anchor and Tree Scenarios</h1>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
+workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span
+class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> </a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2026-09-04
+</p>
+<p>
+<strong>Checks:</strong> <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 6
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> 1
+</p>
+<p>
+<strong>Knit directory:</strong> <code>mos-nmf-experiments/</code> <span
+class="glyphicon glyphicon-question-sign" aria-hidden="true"
+title="This is the local directory in which the code in this file was executed.">
+</span>
+</p>
+<p>
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a>
+analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version
+1.7.2). The <em>Checks</em> tab describes the reproducibility checks
+that were applied when the results were created. The <em>Past
+versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguncommittedchanges">
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> <strong>R Markdown file:</strong> uncommitted
+changes </a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguncommittedchanges"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>The R Markdown file has unstaged changes. To know which version of
+the R Markdown file created these results, you’ll want to first commit
+it to the Git repo. If you’re still working on the analysis, you can
+ignore this warning. When you’re finished, you can run
+<code>wflow_publish</code> to commit the R Markdown file and build the
+HTML.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the
+global environment can affect the analysis in your R Markdown file in
+unknown ways. For reproduciblity it’s best to always run the code in an
+empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20260624code">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Seed:</strong>
+<code>set.seed(20260624)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20260624code"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20260624)</code> was run prior to running
+the code in the R Markdown file. Setting a seed ensures that any results
+that rely on randomness, e.g. subsampling or permutations, are
+reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Session information:</strong>
+recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package
+versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be
+confident that you successfully produced the results during this
+run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr
+project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstreecf85dd5907a95d6ff48c7f88c77e602e9e31342btargetblankcf85dd5a">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Repository version:</strong>
+<a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/cf85dd5907a95d6ff48c7f88c77e602e9e31342b" target="_blank">cf85dd5</a>
+</a>
+</p>
+</div>
+<div
+id="strongRepositoryversionstrongahrefhttpsgithubcomdodatstatsmosnmfexperimentstreecf85dd5907a95d6ff48c7f88c77e602e9e31342btargetblankcf85dd5a"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development
+and connecting the code version to the results is critical for
+reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version
+<a href="https://github.com/dodat-stats/mos-nmf-experiments/tree/cf85dd5907a95d6ff48c7f88c77e602e9e31342b" target="_blank">cf85dd5</a>.
+See the <em>Past versions</em> tab to see a history of the changes made
+to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for
+the analysis have been committed to Git prior to generating the results
+(you can use <code>wflow_publish</code> or
+<code>wflow_git_commit</code>). workflowr only checks the R Markdown
+file, but you know if there are other scripts or data files that it
+depends on. Below is the status of the Git repository when the results
+were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .DS_Store
+    Ignored:    .RData
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+    Ignored:    analysis/.DS_Store
+    Ignored:    analysis/.Rhistory
+    Ignored:    analysis/cache/
+    Ignored:    tex/.DS_Store
+
+Untracked files:
+    Untracked:  code/miso-initialization.R
+
+Unstaged changes:
+    Modified:   analysis/6.miso-anchor-tree.Rmd
+    Deleted:    analysis/miso-alternating.Rmd
+    Deleted:    analysis/miso-baseline-benchmark.Rmd
+    Deleted:    analysis/miso-multiseed-benchmark.Rmd
+    Deleted:    analysis/miso-overspecify-D.Rmd
+    Deleted:    analysis/miso-poi-susie-alternating.Rmd
+    Deleted:    analysis/miso-poi-susie-scenarios.Rmd
+    Deleted:    analysis/miso-purity-D-selection.Rmd
+    Deleted:    analysis/miso-uncertainty-multiseed.Rmd
+    Deleted:    analysis/miso-uncertainty-stress.Rmd
+    Modified:   code/README.md
+    Modified:   code/miso.R
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not
+included in this status report because it is ok for generated content to
+have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+<p>
+These are the previous versions of the repository in which changes were
+made to the R Markdown (<code>analysis/6.miso-anchor-tree.Rmd</code>)
+and HTML (<code>docs/6.miso-anchor-tree.html</code>) files. If you’ve
+configured a remote Git repository (see <code>?wflow_git_remote</code>),
+click on the hyperlinks in the table below to view the files as they
+were in that past version.
+</p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/dodat-stats/mos-nmf-experiments/blob/cf85dd5907a95d6ff48c7f88c77e602e9e31342b/analysis/6.miso-anchor-tree.Rmd" target="_blank">cf85dd5</a>
+</td>
+<td>
+Trong Dat Do
+</td>
+<td>
+2026-09-02
+</td>
+<td>
+Reorganize analyses and document MiSo recovery study
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<p>This page revisits the two support-pattern simulations introduced in
+Analyses 2 and 5, now using the full MiSo model. The first scenario
+contains single-factor anchor motifs. The second has a tree structure
+and no single-factor motif. MiSo learns the factor matrix in both cases.
+The fitted numbers of factors <span class="math inline">\(K\)</span>,
+motifs <span class="math inline">\(S\)</span>, and maximum motif
+dimension <span class="math inline">\(D\)</span> are set separately at
+the beginning of each scenario section.</p>
+<pre class="r"><code>source(&quot;code/miso-benchmark-utils.R&quot;)</code></pre>
+<div id="simulation-design" class="section level2">
+<h2>Simulation design</h2>
+<p>The anchor supports are the eight groups from Analysis 2. The tree
+supports are the six groups from Analysis 5. The early pages used larger
+matrices; here we keep the same structural scenarios but use <span
+class="math inline">\(N=480\)</span> observations and <span
+class="math inline">\(M=500\)</span> features so the demonstration is
+easy to rerun.</p>
+<pre class="r"><code>anchor_supports = list(
+  c(1),
+  c(2),
+  c(3),
+  c(4),
+  c(5),
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(2, 3, 5)
+)
+
+tree_supports = list(
+  c(1, 2, 3),
+  c(1, 2, 4),
+  c(1, 5, 6),
+  c(1, 5, 7),
+  c(1, 2),
+  c(1, 5)
+)
+
+scenario_design = data.frame(
+  scenario = c(&quot;anchor&quot;, &quot;tree/no-anchor&quot;),
+  N = c(480, 480),
+  M = c(500, 500),
+  K = c(5, 7),
+  S = c(length(anchor_supports), length(tree_supports)),
+  D = c(3, 3),
+  support_sizes = c(&quot;1 or 3&quot;, &quot;2 or 3&quot;)
+)
+scenario_design</code></pre>
+<pre><code>        scenario   N   M K S D support_sizes
+1         anchor 480 500 5 8 3        1 or 3
+2 tree/no-anchor 480 500 7 6 3        2 or 3</code></pre>
+<p>Here <span class="math inline">\(D=3\)</span> is the true maximum
+dimension in both scenarios. Some individual motifs have dimension
+smaller than three; MiSo still uses the common maximum <span
+class="math inline">\(D\)</span>, with the Gamma prior parameters
+available to diagnose inactive dimensions.</p>
+<pre class="r"><code>anchor_data = simulate_support_scenario(
+  N = 480,
+  M = 500,
+  K = 5,
+  group_supports = anchor_supports,
+  shape_vec = c(rep(10, 5), rep(20, 3)),
+  seed = 42
+)
+
+tree_data = simulate_support_scenario(
+  N = 480,
+  M = 500,
+  K = 7,
+  group_supports = tree_supports,
+  shape_vec = rep(18, length(tree_supports)),
+  seed = 47
+)
+
+data.frame(
+  scenario = c(&quot;anchor&quot;, &quot;tree/no-anchor&quot;),
+  total_count = c(sum(anchor_data$Y), sum(tree_data$Y)),
+  nonzero_entries = c(sum(anchor_data$Y &gt; 0), sum(tree_data$Y &gt; 0))
+)</code></pre>
+<pre><code>        scenario total_count nonzero_entries
+1         anchor       13433           10964
+2 tree/no-anchor       23248           19025</code></pre>
+<div id="shared-fitting-helper" class="section level3">
+<h3>Shared fitting helper</h3>
+<p>The factors are unknown to the fitting algorithm. Each scenario is
+fitted three times from the same MF-Poisson-SuSiE preliminary fit logic
+but with different motif initializations:</p>
+<ol style="list-style-type: decimal">
+<li><code>distinct</code> selects the top <span
+class="math inline">\(D\)</span> center factors without
+replacement;</li>
+<li><code>threshold</code> retains center factors with at least 10%
+loading share and recycles those factors when fewer than <span
+class="math inline">\(D\)</span> are retained;</li>
+<li><code>aligned_mf</code> uses the top <span
+class="math inline">\(D\)</span> distinct factors as alignment anchors,
+aligns the exchangeable MF slots within each preliminary cluster, and
+initializes each motif slot from a loading-weighted average of the
+corresponding MF factor-selection posteriors.</li>
+</ol>
+<p>Specifically, let <span class="math inline">\(p_i(d)\)</span> be the
+MF slot aligned to motif slot <span class="math inline">\(d\)</span> for
+observation <span class="math inline">\(i\)</span>, and let <span
+class="math inline">\(w_{i,p_i(d)}\)</span> be that slot’s share of the
+observation’s expected total loading. For the observations in
+preliminary cluster <span class="math inline">\(C_s\)</span>, the new
+initialization is</p>
+<p><span class="math display">\[
+\bar\gamma^{(0)}_{sdk}
+=
+(1-\varepsilon_\gamma)
+\frac{
+  \sum_{i\in C_s}w_{i,p_i(d)}
+  \bar\gamma^{\mathrm{MF}}_{i,p_i(d),k}
+}{
+  \sum_{i\in C_s}w_{i,p_i(d)}
+}
++\frac{\varepsilon_\gamma}{K}.
+\]</span></p>
+<p>The one-to-one alignment maximizes the MF posterior expected loading
+assigned to the distinct anchor factors. Normalizing the loading weights
+within each observation prevents high-count observations from dominating
+the cluster average.</p>
+<p>The true factor matrix and support labels are used only after fitting
+to evaluate recovery. Cache filenames are generated from the scenario,
+fitted <span class="math inline">\(K,S,D\)</span>, seed, and
+initialization, so changing a setting creates a new fit.</p>
+<pre class="r"><code>fit_miso_scenario = function(dat, scenario, K, S, D, seed,
+                             motif_initialization) {
+  motif_initialization = match.arg(
+    motif_initialization, c(&quot;distinct&quot;, &quot;threshold&quot;, &quot;aligned_mf&quot;)
+  )
+  cache_dir = file.path(&quot;analysis&quot;, &quot;cache&quot;, &quot;6.miso-anchor-tree-v2&quot;)
+  dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+  cache_name = sprintf(
+    &quot;%s-K%d-S%d-D%d-seed%d-%s-iter30.rds&quot;,
+    scenario, K, S, D, seed, motif_initialization
+  )
+  cache_file = file.path(cache_dir, cache_name)
+
+  if (file.exists(cache_file)) return(readRDS(cache_file))
+  legacy_cache_file = file.path(
+    &quot;analysis&quot;, &quot;cache&quot;, &quot;6.miso-anchor-tree-v1&quot;,
+    sprintf(&quot;%s-K%d-S%d-D%d-seed%d-iter30.rds&quot;, scenario, K, S, D, seed)
+  )
+  if (motif_initialization == &quot;distinct&quot; &amp;&amp; file.exists(legacy_cache_file)) {
+    return(readRDS(legacy_cache_file))
+  }
+
+  fit = miso(
+    Y = dat$Y,
+    K = K,
+    S = S,
+    D = D,
+    max_iters = 30,
+    n_inner = 3,
+    mf_max_iters = 30,
+    mf_nmf_iters = 60,
+    init_seed = seed,
+    update_prior = TRUE,
+    update_F = TRUE,
+    update_gamma = TRUE,
+    update_slot_scale = FALSE,
+    motif_initialization = motif_initialization,
+    motif_min_share = 0.10,
+    surplus_slots = &quot;repeat&quot;,
+    tol = 1e-5,
+    min_iters = 5,
+    patience = 2,
+    block_size = 100
+  )
+  saveRDS(fit, cache_file)
+  fit
+}</code></pre>
+</div>
+<div id="recovery-summaries" class="section level3">
+<h3>Recovery summaries</h3>
+<p>Factor and motif labels are permutation invariant. The following
+helpers match learned factors to true factors by cosine similarity and
+match fitted motifs to true groups by total posterior
+responsibility.</p>
+<div id="how-the-plotted-quantities-are-computed"
+class="section level4">
+<h4>How the plotted quantities are computed</h4>
+<p>The plots use the following fitted variational quantities:</p>
+<ul>
+<li><code>omega[n, s]</code> is the posterior probability that
+observation <span class="math inline">\(n\)</span> belongs to motif
+<span class="math inline">\(s\)</span>, <span
+class="math inline">\(\omega_{ns}=q(z_n=s)\)</span>.</li>
+<li><code>gamma_bar[s, d, k]</code> is the posterior probability that
+dimension <span class="math inline">\(d\)</span> of motif <span
+class="math inline">\(s\)</span> selects factor <span
+class="math inline">\(k\)</span>, <span
+class="math inline">\(\bar\gamma_{sdk}=q(c_{sd}=k)\)</span>.</li>
+<li><code>alpha[n, s, d]</code> and <code>beta_sd[s, d]</code> are the
+shape and rate of the variational Gamma distribution for the loading in
+dimension <span class="math inline">\(d\)</span>. Therefore its
+posterior mean is <span
+class="math inline">\(\alpha_{nsd}/\beta_{sd}\)</span>. Here <span
+class="math inline">\(\beta\)</span> is the Gamma rate; the object
+called <code>lambda_mean</code> inside
+<code>motif_factor_scores()</code> is an average <em>loading</em>, not a
+rate parameter.</li>
+<li><code>slot_scale[s, d]</code>, denoted <span
+class="math inline">\(\tau_{sd}\)</span> below, is an optional
+multiplicative scale for that dimension. This page sets
+<code>update_slot_scale = FALSE</code>, so <span
+class="math inline">\(\tau_{sd}=1\)</span> for every motif and
+dimension.</li>
+</ul>
+<p>For each motif and dimension, <code>motif_factor_scores()</code>
+first computes the responsibility-weighted mean loading</p>
+<p><span class="math display">\[
+\bar\ell_{sd}
+=
+\frac{\sum_{n=1}^N \omega_{ns}
+      \alpha_{nsd}/\beta_{sd}}
+     {\sum_{n=1}^N \omega_{ns}}.
+\]</span></p>
+<p>It then aggregates the <span class="math inline">\(D\)</span>
+dimensions into the unnormalized motif–factor strength</p>
+<p><span class="math display">\[
+A_{sk}=\sum_{d=1}^D
+       \tau_{sd}\,\bar\ell_{sd}\,\bar\gamma_{sdk}.
+\]</span></p>
+<p>The fitted <span class="math inline">\(S\times K\)</span> heatmap
+displays the row-normalized matrix <span
+class="math inline">\(\widetilde A_{sk}=A_{sk}/\sum_{j=1}^K
+A_{sj}\)</span>. Thus a cell is the estimated share of a motif’s total
+loading strength carried by a factor. It is not merely <span
+class="math inline">\(\sum_d\bar\gamma_{sdk}\)</span>: dimensions with
+larger expected loadings contribute more. Every row of the displayed
+matrix sums to one. The implementation applies a <span
+class="math inline">\(10^{-12}\)</span> floor to denominators and fitted
+strengths only to avoid numerical division by zero.</p>
+<p>For comparison, if the true support of group <span
+class="math inline">\(g\)</span> is <span class="math inline">\({\cal
+A}_g\)</span>, the true <span class="math inline">\(S\times K\)</span>
+map is</p>
+<p><span class="math display">\[
+T_{gk}=\frac{\mathbf{1}\{k\in {\cal A}_g\}}{|{\cal A}_g|}.
+\]</span></p>
+<p>This gives equal share to every truly active factor and also makes
+each row sum to one. It records support membership, whereas the fitted
+map records estimated loading strength; the comparison therefore
+emphasizes whether the fitted mass falls on the correct support rather
+than requiring equal fitted weights.</p>
+<p>Because both factor and motif labels are arbitrary, the display
+applies two permutations after fitting. Learned factors are matched to
+true factors by the one-to-one assignment that maximizes the sum of
+cosine similarities between rows of the learned and true factor
+matrices. Fitted motifs are matched to true groups by the one-to-one
+assignment that maximizes <span
+class="math inline">\(\sum_n\omega_{n,s(g)}\mathbf{1}\{g_n=g\}\)</span>.
+These steps only reorder rows or columns for evaluation; the true labels
+are never supplied to <code>miso()</code>.</p>
+<p>The posterior-responsibility heatmap displays</p>
+<p><span class="math display">\[
+R_{gh}=\frac{1}{N_g}\sum_{n:g_n=g}\omega_{n,s(h)},
+\]</span></p>
+<p>where <span class="math inline">\(s(h)\)</span> is the fitted motif
+aligned to true group <span class="math inline">\(h\)</span>. Its rows
+sum to one. A large diagonal entry means that observations from true
+group <span class="math inline">\(g\)</span> place most of their
+posterior mass on the corresponding fitted motif; off-diagonal mass
+shows uncertainty or merging between motifs. All heatmaps use the same
+fixed color range from zero to one, and the printed cell values are
+these matrices rounded to two decimal places.</p>
+<pre class="r"><code>maximum_weight_assignment = function(score) {
+  n = max(nrow(score), ncol(score))
+  padded = matrix(0, nrow = n, ncol = n)
+  padded[seq_len(nrow(score)), seq_len(ncol(score))] = score
+
+  if (requireNamespace(&quot;clue&quot;, quietly = TRUE)) {
+    return(as.integer(clue::solve_LSAP(padded, maximum = TRUE)))
+  }
+
+  assignment = rep(NA_integer_, n)
+  available_rows = seq_len(n)
+  available_columns = seq_len(n)
+  for (j in seq_len(n)) {
+    candidate = which(
+      padded[available_rows, available_columns, drop = FALSE] ==
+        max(padded[available_rows, available_columns, drop = FALSE]),
+      arr.ind = TRUE
+    )[1, ]
+    row = available_rows[candidate[1]]
+    column = available_columns[candidate[2]]
+    assignment[row] = column
+    available_rows = setdiff(available_rows, row)
+    available_columns = setdiff(available_columns, column)
+  }
+  assignment
+}
+
+match_factor_rows = function(F_hat, F_true) {
+  similarity = row_cosine(F_hat, F_true)
+  assignment = maximum_weight_assignment(similarity)
+  learned_to_true = rep(NA_integer_, nrow(F_hat))
+  matched = assignment[seq_len(nrow(F_hat))]
+  learned_to_true[matched &lt;= nrow(F_true)] =
+    matched[matched &lt;= nrow(F_true)]
+
+  unmatched = which(is.na(learned_to_true))
+  if (length(unmatched) &gt; 0) {
+    learned_to_true[unmatched] = max.col(
+      similarity[unmatched, , drop = FALSE], ties.method = &quot;first&quot;
+    )
+  }
+  attr(learned_to_true, &quot;true_K&quot;) = nrow(F_true)
+
+  list(
+    table = data.frame(
+      learned_factor = seq_len(nrow(F_hat)),
+      matched_true_factor = as.integer(learned_to_true),
+      cosine = similarity[cbind(seq_len(nrow(F_hat)), learned_to_true)]
+    ),
+    learned_to_true = learned_to_true,
+    similarity = similarity
+  )
+}
+
+map_scores_to_true = function(scores, learned_to_true) {
+  true_K = attr(learned_to_true, &quot;true_K&quot;)
+  if (is.null(true_K)) true_K = max(learned_to_true)
+  out = matrix(0, nrow = nrow(scores), ncol = true_K)
+  for (k in seq_along(learned_to_true)) {
+    out[, learned_to_true[k]] = out[, learned_to_true[k]] + scores[, k]
+  }
+  out
+}
+
+match_motifs_to_groups = function(omega, true_group) {
+  groups = sort(unique(true_group))
+  S_fit = ncol(omega)
+
+  score = vapply(groups, function(g) {
+    colSums(omega[true_group == g, , drop = FALSE])
+  }, numeric(S_fit))
+
+  assignment = maximum_weight_assignment(score)
+  fit_to_true = assignment[seq_len(S_fit)]
+  unmatched_fits = which(fit_to_true &gt; length(groups))
+  if (length(unmatched_fits) &gt; 0) {
+    fit_to_true[unmatched_fits] = max.col(
+      score[unmatched_fits, , drop = FALSE], ties.method = &quot;first&quot;
+    )
+  }
+
+  true_to_fit = match(seq_along(groups), fit_to_true)
+  unmatched_groups = which(is.na(true_to_fit))
+  if (length(unmatched_groups) &gt; 0) {
+    true_to_fit[unmatched_groups] = vapply(unmatched_groups, function(g) {
+      which.max(score[, g])
+    }, integer(1))
+  }
+
+  list(
+    fit_to_true = fit_to_true,
+    true_to_fit = true_to_fit,
+    score = score
+  )
+}
+
+true_motif_matrix = function(supports, K) {
+  # T[g, k] = 1 / |A_g| for a factor in the true support A_g, and zero otherwise.
+  out = matrix(0, nrow = length(supports), ncol = K)
+  for (s in seq_along(supports)) {
+    out[s, supports[[s]]] = 1 / length(supports[[s]])
+  }
+  out
+}
+
+distinct_slot_winners = function(gamma_bar) {
+  winners = apply(gamma_bar, c(1, 2), which.max)
+  apply(winners, 1, function(x) length(unique(x)))
+}
+
+evaluate_miso = function(fit, dat, supports, scenario) {
+  # Match learned labels to truth only for evaluation and plotting.
+  factor_match = match_factor_rows(fit$F, dat$F0)
+  motif_match = match_motifs_to_groups(fit$omega, dat$grp)
+
+  # Observation-level expected factor loadings are used for support metrics.
+  observation_scores = miso_observation_factor_scores(fit)
+
+  # A[s, k] = sum_d tau[s, d] * ell_bar[s, d] * gamma_bar[s, d, k].
+  motif_scores = motif_factor_scores(fit)$scores
+  # Reorder factor columns into true-factor order, normalize each motif to sum 1,
+  # and reorder motif rows into true-group order.
+  motif_scores = map_scores_to_true(
+    motif_scores, factor_match$learned_to_true
+  )
+  motif_scores = normalize_scores(motif_scores)
+  motif_scores = motif_scores[motif_match$true_to_fit, , drop = FALSE]
+
+  # R[g, s] is the mean posterior responsibility for fitted motif s among
+  # observations generated from true group g.
+  group_responsibility = do.call(rbind, lapply(seq_along(supports), function(g) {
+    colMeans(fit$omega[dat$grp == g, , drop = FALSE])
+  }))
+  group_responsibility = group_responsibility[
+    , motif_match$true_to_fit, drop = FALSE
+  ]
+
+  soft_mass = mean(fit$omega[cbind(
+    seq_len(nrow(fit$omega)), motif_match$true_to_fit[dat$grp]
+  )])
+
+  metrics = data.frame(
+    scenario = scenario,
+    true_K = nrow(dat$F0),
+    true_S = length(supports),
+    true_D = max(lengths(supports)),
+    fitted_K = nrow(fit$F),
+    fitted_S = ncol(fit$omega),
+    fitted_D = dim(fit$gamma_bar)[2],
+    median_initial_distinct_factors = median(
+      distinct_slot_winners(fit$gamma_init$gamma_bar)
+    ),
+    median_final_distinct_factors = median(
+      distinct_slot_winners(fit$gamma_bar)
+    ),
+    mean_initial_gamma_entropy = mean(
+      motif_gamma_entropy(fit$gamma_init$gamma_bar)
+    ),
+    mean_initial_top_gamma = mean(
+      apply(fit$gamma_init$gamma_bar, c(1, 2), max)
+    ),
+    soft_motif_accuracy = soft_mass,
+    exact_support_accuracy = support_accuracy(
+      observation_scores, factor_match$learned_to_true, dat
+    ),
+    support_jaccard = support_jaccard(
+      observation_scores, factor_match$learned_to_true, dat
+    ),
+    mean_factor_cosine = mean(factor_match$table$cosine),
+    mean_assignment_certainty = mean(apply(fit$omega, 1, max))
+  )
+
+  motif_summary = do.call(rbind, lapply(seq_along(supports), function(g) {
+    n_active = length(supports[[g]])
+    estimated = order(motif_scores[g, ], decreasing = TRUE)[seq_len(n_active)]
+    data.frame(
+      true_group = paste0(&quot;G&quot;, g),
+      matched_fitted_motif = paste0(&quot;S&quot;, motif_match$true_to_fit[g]),
+      true_factors = support_label(supports[[g]]),
+      estimated_top_factors = support_label(estimated),
+      posterior_mass_on_true_factors = round(
+        sum(motif_scores[g, supports[[g]]]), 3
+      )
+    )
+  }))
+
+  list(
+    metrics = metrics,
+    factor_match = factor_match,
+    motif_match = motif_match,
+    group_responsibility = group_responsibility,
+    true_motif_share = true_motif_matrix(supports, nrow(dat$F0)),
+    fitted_motif_share = motif_scores,
+    motif_summary = motif_summary
+  )
+}
+
+plot_heatmap = function(mat, main, xlab, ylab, xlabels, ylabels,
+                        digits = 2) {
+  # Every displayed matrix is on [0, 1]; text reports its cell values directly.
+  image(
+    x = seq_len(ncol(mat)), y = seq_len(nrow(mat)), z = t(mat),
+    axes = FALSE, xlab = xlab, ylab = ylab, main = main,
+    zlim = c(0, 1), col = hcl.colors(100, &quot;YlOrRd&quot;)
+  )
+  axis(1, at = seq_len(ncol(mat)), labels = xlabels)
+  axis(2, at = seq_len(nrow(mat)), labels = ylabels, las = 1)
+  for (i in seq_len(nrow(mat))) {
+    for (j in seq_len(ncol(mat))) {
+      text(j, i, sprintf(paste0(&quot;%.&quot;, digits, &quot;f&quot;), mat[i, j]), cex = 0.65)
+    }
+  }
+  box()
+}
+
+plot_scenario = function(result, scenario) {
+  S = nrow(result$true_motif_share)
+  K = ncol(result$true_motif_share)
+  group_labels = paste0(&quot;G&quot;, seq_len(S))
+  factor_labels = paste0(&quot;F&quot;, seq_len(K))
+
+  op = par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+  on.exit(par(op))
+  plot_heatmap(
+    result$true_motif_share,
+    paste(scenario, &quot;true motif-factor map&quot;),
+    &quot;True factor&quot;, &quot;True group&quot;, factor_labels, group_labels
+  )
+  plot_heatmap(
+    result$fitted_motif_share,
+    paste(scenario, &quot;fitted motif-factor map&quot;),
+    &quot;Matched true factor&quot;, &quot;Matched true group&quot;, factor_labels, group_labels
+  )
+}</code></pre>
+</div>
+</div>
+</div>
+<div id="anchor-scenario" class="section level2">
+<h2>Anchor scenario</h2>
+<p>The anchor scenario contains five one-factor motifs and three
+three-factor motifs. It checks whether MiSo can learn elementary factor
+directions and reuse them inside composite motifs.</p>
+<div id="choose-the-fitted-dimensions" class="section level3">
+<h3>Choose the fitted dimensions</h3>
+<p>Edit the first three values in the following chunk to choose the
+fitted <span class="math inline">\(K,S,D\)</span> for the anchor
+analysis. The defaults are the true values. The <code>distinct</code>
+and <code>aligned_mf</code> require
+<code>ANCHOR_FIT_D &lt;= ANCHOR_FIT_K</code>.</p>
+<pre class="r"><code>ANCHOR_FIT_K = 5
+ANCHOR_FIT_S = 8
+ANCHOR_FIT_D = 3
+ANCHOR_FIT_SEED = 1
+
+data.frame(
+  fitted_K = ANCHOR_FIT_K,
+  fitted_S = ANCHOR_FIT_S,
+  fitted_D = ANCHOR_FIT_D,
+  seed = ANCHOR_FIT_SEED
+)</code></pre>
+<pre><code>  fitted_K fitted_S fitted_D seed
+1        5        8        3    1</code></pre>
+</div>
+<div id="fit-with-three-initializations" class="section level3">
+<h3>Fit with three initializations</h3>
+<pre class="r"><code>anchor_fit_distinct = fit_miso_scenario(
+  anchor_data,
+  scenario = &quot;anchor&quot;,
+  K = ANCHOR_FIT_K,
+  S = ANCHOR_FIT_S,
+  D = ANCHOR_FIT_D,
+  seed = ANCHOR_FIT_SEED,
+  motif_initialization = &quot;distinct&quot;
+)
+
+anchor_fit_threshold = fit_miso_scenario(
+  anchor_data,
+  scenario = &quot;anchor&quot;,
+  K = ANCHOR_FIT_K,
+  S = ANCHOR_FIT_S,
+  D = ANCHOR_FIT_D,
+  seed = ANCHOR_FIT_SEED,
+  motif_initialization = &quot;threshold&quot;
+)
+
+anchor_fit_aligned_mf = fit_miso_scenario(
+  anchor_data,
+  scenario = &quot;anchor&quot;,
+  K = ANCHOR_FIT_K,
+  S = ANCHOR_FIT_S,
+  D = ANCHOR_FIT_D,
+  seed = ANCHOR_FIT_SEED,
+  motif_initialization = &quot;aligned_mf&quot;
+)
+
+stopifnot(
+  all(dim(anchor_fit_distinct$gamma_bar) ==
+        c(ANCHOR_FIT_S, ANCHOR_FIT_D, ANCHOR_FIT_K)),
+  all(dim(anchor_fit_threshold$gamma_bar) ==
+        c(ANCHOR_FIT_S, ANCHOR_FIT_D, ANCHOR_FIT_K)),
+  all(dim(anchor_fit_aligned_mf$gamma_bar) ==
+        c(ANCHOR_FIT_S, ANCHOR_FIT_D, ANCHOR_FIT_K))
+)</code></pre>
+</div>
+<div id="compare-recovery" class="section level3">
+<h3>Compare recovery</h3>
+<pre class="r"><code>anchor_result_distinct = evaluate_miso(
+  anchor_fit_distinct, anchor_data, anchor_supports, &quot;anchor&quot;
+)
+anchor_result_threshold = evaluate_miso(
+  anchor_fit_threshold, anchor_data, anchor_supports, &quot;anchor&quot;
+)
+anchor_result_aligned_mf = evaluate_miso(
+  anchor_fit_aligned_mf, anchor_data, anchor_supports, &quot;anchor&quot;
+)
+
+anchor_recovery_summary = rbind(
+  transform(anchor_result_distinct$metrics, initialization = &quot;distinct&quot;),
+  transform(anchor_result_threshold$metrics,
+            initialization = &quot;threshold/recycle&quot;),
+  transform(anchor_result_aligned_mf$metrics,
+            initialization = &quot;aligned MF posterior&quot;)
+)
+numeric_columns = vapply(anchor_recovery_summary, is.numeric, logical(1))
+anchor_recovery_summary[numeric_columns] = round(
+  anchor_recovery_summary[numeric_columns], 3
+)
+anchor_recovery_summary</code></pre>
+<pre><code>  scenario true_K true_S true_D fitted_K fitted_S fitted_D
+1   anchor      5      8      3        5        8        3
+2   anchor      5      8      3        5        8        3
+3   anchor      5      8      3        5        8        3
+  median_initial_distinct_factors median_final_distinct_factors
+1                               3                             3
+2                               1                             1
+3                               3                             2
+  mean_initial_gamma_entropy mean_initial_top_gamma soft_motif_accuracy
+1                      0.139                  0.960               0.684
+2                      0.139                  0.960               0.992
+3                      0.361                  0.809               0.992
+  exact_support_accuracy support_jaccard mean_factor_cosine
+1                  0.994           0.994              0.989
+2                  0.992           0.992              0.990
+3                  0.992           0.992              0.990
+  mean_assignment_certainty       initialization
+1                     0.749             distinct
+2                     0.998    threshold/recycle
+3                     0.998 aligned MF posterior</code></pre>
+<pre class="r"><code>rbind(
+  cbind(initialization = &quot;distinct&quot;,
+        anchor_result_distinct$motif_summary),
+  cbind(initialization = &quot;threshold/recycle&quot;,
+        anchor_result_threshold$motif_summary),
+  cbind(initialization = &quot;aligned MF posterior&quot;,
+        anchor_result_aligned_mf$motif_summary)
+)</code></pre>
+<pre><code>         initialization true_group matched_fitted_motif true_factors
+1              distinct         G1                   S7            1
+2              distinct         G2                   S3            2
+3              distinct         G3                   S8            3
+4              distinct         G4                   S5            4
+5              distinct         G5                   S2            5
+6              distinct         G6                   S4        1,2,3
+7              distinct         G7                   S1        1,2,4
+8              distinct         G8                   S6        2,3,5
+9     threshold/recycle         G1                   S8            1
+10    threshold/recycle         G2                   S3            2
+11    threshold/recycle         G3                   S2            3
+12    threshold/recycle         G4                   S5            4
+13    threshold/recycle         G5                   S7            5
+14    threshold/recycle         G6                   S4        1,2,3
+15    threshold/recycle         G7                   S1        1,2,4
+16    threshold/recycle         G8                   S6        2,3,5
+17 aligned MF posterior         G1                   S8            1
+18 aligned MF posterior         G2                   S3            2
+19 aligned MF posterior         G3                   S2            3
+20 aligned MF posterior         G4                   S5            4
+21 aligned MF posterior         G5                   S7            5
+22 aligned MF posterior         G6                   S4        1,2,3
+23 aligned MF posterior         G7                   S1        1,2,4
+24 aligned MF posterior         G8                   S6        2,3,5
+   estimated_top_factors posterior_mass_on_true_factors
+1                      3                          0.319
+2                      2                          0.997
+3                      4                          0.000
+4                      4                          0.997
+5                      3                          0.334
+6                  1,2,3                          1.000
+7                  1,2,4                          1.000
+8                  2,3,5                          1.000
+9                      1                          1.000
+10                     2                          1.000
+11                     3                          1.000
+12                     4                          1.000
+13                     5                          1.000
+14                 1,2,3                          1.000
+15                 1,2,4                          1.000
+16                 2,3,5                          1.000
+17                     1                          0.997
+18                     2                          0.994
+19                     3                          0.990
+20                     4                          0.990
+21                     5                          1.000
+22                 1,2,3                          1.000
+23                 1,2,4                          1.000
+24                 2,3,5                          1.000</code></pre>
+<pre class="r"><code>plot_scenario(anchor_result_distinct, &quot;Anchor, distinct initialization&quot;)</code></pre>
+<p><img src="figure/6.miso-anchor-tree.Rmd/anchor-factor-maps-1.png" alt="" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_scenario(anchor_result_threshold, &quot;Anchor, threshold/recycle initialization&quot;)</code></pre>
+<p><img src="figure/6.miso-anchor-tree.Rmd/anchor-factor-maps-2.png" alt="" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_scenario(anchor_result_aligned_mf, &quot;Anchor, aligned MF initialization&quot;)</code></pre>
+<p><img src="figure/6.miso-anchor-tree.Rmd/anchor-factor-maps-3.png" alt="" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_heatmap(
+  anchor_result_distinct$group_responsibility,
+  &quot;Anchor, distinct: mean posterior motif responsibility&quot;,
+  &quot;Fitted motif, aligned to group&quot;, &quot;True group&quot;,
+  paste0(&quot;G&quot;, seq_len(ncol(anchor_result_distinct$group_responsibility))),
+  paste0(&quot;G&quot;, seq_len(nrow(anchor_result_distinct$group_responsibility)))
+)
+plot_heatmap(
+  anchor_result_threshold$group_responsibility,
+  &quot;Anchor, threshold/recycle: mean posterior motif responsibility&quot;,
+  &quot;Fitted motif, aligned to group&quot;, &quot;True group&quot;,
+  paste0(&quot;G&quot;, seq_len(ncol(anchor_result_threshold$group_responsibility))),
+  paste0(&quot;G&quot;, seq_len(nrow(anchor_result_threshold$group_responsibility)))
+)
+plot_heatmap(
+  anchor_result_aligned_mf$group_responsibility,
+  &quot;Anchor, aligned MF: mean posterior motif responsibility&quot;,
+  &quot;Fitted motif, aligned to group&quot;, &quot;True group&quot;,
+  paste0(&quot;G&quot;, seq_len(ncol(anchor_result_aligned_mf$group_responsibility))),
+  paste0(&quot;G&quot;, seq_len(nrow(anchor_result_aligned_mf$group_responsibility)))
+)</code></pre>
+<p><img src="figure/6.miso-anchor-tree.Rmd/anchor-responsibilities-1.png" alt="" width="576" style="display: block; margin: auto;" /><img src="figure/6.miso-anchor-tree.Rmd/anchor-responsibilities-2.png" alt="" width="576" style="display: block; margin: auto;" /><img src="figure/6.miso-anchor-tree.Rmd/anchor-responsibilities-3.png" alt="" width="576" style="display: block; margin: auto;" /></p>
+<p>The diagonal responsibility pattern checks motif recovery directly,
+while the factor maps separate dictionary recovery from motif recovery.
+The fitted map is shown after label matching only; the true labels were
+not used during fitting.</p>
+</div>
+</div>
+<div id="tree-scenario" class="section level2">
+<h2>Tree scenario</h2>
+<p>Every tree motif contains factor 1 and then follows one of two
+branches, through factor 2 or factor 5. Four motifs add a
+branch-specific leaf. Because there are no one-factor groups, recovery
+must use repeated co-occurrence across motifs rather than isolated
+anchors.</p>
+<div id="choose-the-fitted-dimensions-1" class="section level3">
+<h3>Choose the fitted dimensions</h3>
+<p>Edit the first three values in the following chunk to choose the
+fitted <span class="math inline">\(K,S,D\)</span> for the tree analysis.
+The defaults are the true values. The <code>distinct</code> and
+<code>aligned_mf</code> require
+<code>TREE_FIT_D &lt;= TREE_FIT_K</code>.</p>
+<pre class="r"><code>TREE_FIT_K = 7
+TREE_FIT_S = 6
+TREE_FIT_D = 3
+TREE_FIT_SEED = 2
+
+data.frame(
+  fitted_K = TREE_FIT_K,
+  fitted_S = TREE_FIT_S,
+  fitted_D = TREE_FIT_D,
+  seed = TREE_FIT_SEED
+)</code></pre>
+<pre><code>  fitted_K fitted_S fitted_D seed
+1        7        6        3    2</code></pre>
+</div>
+<div id="fit-with-three-initializations-1" class="section level3">
+<h3>Fit with three initializations</h3>
+<pre class="r"><code>tree_fit_distinct = fit_miso_scenario(
+  tree_data,
+  scenario = &quot;tree&quot;,
+  K = TREE_FIT_K,
+  S = TREE_FIT_S,
+  D = TREE_FIT_D,
+  seed = TREE_FIT_SEED,
+  motif_initialization = &quot;distinct&quot;
+)
+
+tree_fit_threshold = fit_miso_scenario(
+  tree_data,
+  scenario = &quot;tree&quot;,
+  K = TREE_FIT_K,
+  S = TREE_FIT_S,
+  D = TREE_FIT_D,
+  seed = TREE_FIT_SEED,
+  motif_initialization = &quot;threshold&quot;
+)
+
+tree_fit_aligned_mf = fit_miso_scenario(
+  tree_data,
+  scenario = &quot;tree&quot;,
+  K = TREE_FIT_K,
+  S = TREE_FIT_S,
+  D = TREE_FIT_D,
+  seed = TREE_FIT_SEED,
+  motif_initialization = &quot;aligned_mf&quot;
+)
+
+stopifnot(
+  all(dim(tree_fit_distinct$gamma_bar) ==
+        c(TREE_FIT_S, TREE_FIT_D, TREE_FIT_K)),
+  all(dim(tree_fit_threshold$gamma_bar) ==
+        c(TREE_FIT_S, TREE_FIT_D, TREE_FIT_K)),
+  all(dim(tree_fit_aligned_mf$gamma_bar) ==
+        c(TREE_FIT_S, TREE_FIT_D, TREE_FIT_K))
+)</code></pre>
+</div>
+<div id="compare-recovery-1" class="section level3">
+<h3>Compare recovery</h3>
+<pre class="r"><code>tree_result_distinct = evaluate_miso(
+  tree_fit_distinct, tree_data, tree_supports, &quot;tree/no-anchor&quot;
+)
+tree_result_threshold = evaluate_miso(
+  tree_fit_threshold, tree_data, tree_supports, &quot;tree/no-anchor&quot;
+)
+tree_result_aligned_mf = evaluate_miso(
+  tree_fit_aligned_mf, tree_data, tree_supports, &quot;tree/no-anchor&quot;
+)
+
+tree_recovery_summary = rbind(
+  transform(tree_result_distinct$metrics, initialization = &quot;distinct&quot;),
+  transform(tree_result_threshold$metrics,
+            initialization = &quot;threshold/recycle&quot;),
+  transform(tree_result_aligned_mf$metrics,
+            initialization = &quot;aligned MF posterior&quot;)
+)
+numeric_columns = vapply(tree_recovery_summary, is.numeric, logical(1))
+tree_recovery_summary[numeric_columns] = round(
+  tree_recovery_summary[numeric_columns], 3
+)
+tree_recovery_summary</code></pre>
+<pre><code>        scenario true_K true_S true_D fitted_K fitted_S fitted_D
+1 tree/no-anchor      7      6      3        7        6        3
+2 tree/no-anchor      7      6      3        7        6        3
+3 tree/no-anchor      7      6      3        7        6        3
+  median_initial_distinct_factors median_final_distinct_factors
+1                             3.0                           3.0
+2                             1.5                           1.5
+3                             3.0                           3.0
+  mean_initial_gamma_entropy mean_initial_top_gamma soft_motif_accuracy
+1                      0.130                  0.957               0.660
+2                      0.130                  0.957               0.968
+3                      0.345                  0.817               0.987
+  exact_support_accuracy support_jaccard mean_factor_cosine
+1                  0.988           0.992              0.819
+2                  0.642           0.793              0.755
+3                  0.990           0.993              0.773
+  mean_assignment_certainty       initialization
+1                     0.670             distinct
+2                     0.999    threshold/recycle
+3                     0.999 aligned MF posterior</code></pre>
+<pre class="r"><code>rbind(
+  cbind(initialization = &quot;distinct&quot;,
+        tree_result_distinct$motif_summary),
+  cbind(initialization = &quot;threshold/recycle&quot;,
+        tree_result_threshold$motif_summary),
+  cbind(initialization = &quot;aligned MF posterior&quot;,
+        tree_result_aligned_mf$motif_summary)
+)</code></pre>
+<pre><code>         initialization true_group matched_fitted_motif true_factors
+1              distinct         G1                   S2        1,2,3
+2              distinct         G2                   S6        1,2,4
+3              distinct         G3                   S1        1,5,6
+4              distinct         G4                   S3        1,5,7
+5              distinct         G5                   S4          1,2
+6              distinct         G6                   S5          1,5
+7     threshold/recycle         G1                   S2        1,2,3
+8     threshold/recycle         G2                   S6        1,2,4
+9     threshold/recycle         G3                   S1        1,5,6
+10    threshold/recycle         G4                   S3        1,5,7
+11    threshold/recycle         G5                   S4          1,2
+12    threshold/recycle         G6                   S5          1,5
+13 aligned MF posterior         G1                   S2        1,2,3
+14 aligned MF posterior         G2                   S6        1,2,4
+15 aligned MF posterior         G3                   S1        1,5,6
+16 aligned MF posterior         G4                   S3        1,5,7
+17 aligned MF posterior         G5                   S4          1,2
+18 aligned MF posterior         G6                   S5          1,5
+   estimated_top_factors posterior_mass_on_true_factors
+1                  1,2,3                          1.000
+2                  1,2,4                          1.000
+3                  1,5,6                          1.000
+4                  1,5,7                          1.000
+5                    2,3                          0.738
+6                    5,7                          0.725
+7                  1,2,3                          1.000
+8                  1,2,4                          1.000
+9                  1,2,6                          1.000
+10                 1,2,7                          1.000
+11                   1,2                          1.000
+12                   1,5                          0.970
+13                 1,2,3                          1.000
+14                 1,2,4                          1.000
+15                 1,5,6                          1.000
+16                 1,5,7                          1.000
+17                   1,2                          0.979
+18                   1,5                          0.982</code></pre>
+<pre class="r"><code>plot_scenario(tree_result_distinct, &quot;Tree, distinct initialization&quot;)</code></pre>
+<p><img src="figure/6.miso-anchor-tree.Rmd/tree-factor-maps-1.png" alt="" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_scenario(tree_result_threshold, &quot;Tree, threshold/recycle initialization&quot;)</code></pre>
+<p><img src="figure/6.miso-anchor-tree.Rmd/tree-factor-maps-2.png" alt="" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_scenario(tree_result_aligned_mf, &quot;Tree, aligned MF initialization&quot;)</code></pre>
+<p><img src="figure/6.miso-anchor-tree.Rmd/tree-factor-maps-3.png" alt="" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_heatmap(
+  tree_result_distinct$group_responsibility,
+  &quot;Tree, distinct: mean posterior motif responsibility&quot;,
+  &quot;Fitted motif, aligned to group&quot;, &quot;True group&quot;,
+  paste0(&quot;G&quot;, seq_len(ncol(tree_result_distinct$group_responsibility))),
+  paste0(&quot;G&quot;, seq_len(nrow(tree_result_distinct$group_responsibility)))
+)
+plot_heatmap(
+  tree_result_threshold$group_responsibility,
+  &quot;Tree, threshold/recycle: mean posterior motif responsibility&quot;,
+  &quot;Fitted motif, aligned to group&quot;, &quot;True group&quot;,
+  paste0(&quot;G&quot;, seq_len(ncol(tree_result_threshold$group_responsibility))),
+  paste0(&quot;G&quot;, seq_len(nrow(tree_result_threshold$group_responsibility)))
+)
+plot_heatmap(
+  tree_result_aligned_mf$group_responsibility,
+  &quot;Tree, aligned MF: mean posterior motif responsibility&quot;,
+  &quot;Fitted motif, aligned to group&quot;, &quot;True group&quot;,
+  paste0(&quot;G&quot;, seq_len(ncol(tree_result_aligned_mf$group_responsibility))),
+  paste0(&quot;G&quot;, seq_len(nrow(tree_result_aligned_mf$group_responsibility)))
+)</code></pre>
+<p><img src="figure/6.miso-anchor-tree.Rmd/tree-responsibilities-1.png" alt="" width="576" style="display: block; margin: auto;" /><img src="figure/6.miso-anchor-tree.Rmd/tree-responsibilities-2.png" alt="" width="576" style="display: block; margin: auto;" /><img src="figure/6.miso-anchor-tree.Rmd/tree-responsibilities-3.png" alt="" width="576" style="display: block; margin: auto;" /></p>
+</div>
+<div id="interpretation-across-scenarios" class="section level3">
+<h3>Interpretation across scenarios</h3>
+<p>The anchor scenario is the easier sanity check: the singleton motifs
+expose each factor separately, and the composite motifs test whether
+those parts are recombined correctly. The tree scenario is more
+diagnostic of MiSo because its factors are identifiable only through
+shared motif structure. Within each scenario, the three fits hold <span
+class="math inline">\(K,S,D\)</span> and the random seed fixed, so
+differences in recovery can be attributed to the motif initialization.
+Changing the scenario-specific settings above makes it possible to study
+under- or over-specification without modifying the fitting and
+evaluation code.</p>
+<p>In the default runs, <code>aligned_mf</code> begins with three
+distinct factor directions per motif in both scenarios. In the anchor
+scenario it attains the same high soft motif accuracy as
+threshold/recycle, while its median final number of distinct directions
+is two rather than one. In the tree scenario it retains a median of
+three distinct directions and combines high motif accuracy with the best
+support recovery of the three initializations. This is the intended
+compromise: retain the dimensional coverage of distinct initialization
+while using the uncertainty already learned by MF-Poisson-SuSiE.</p>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
+Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 4.5.2 (2025-10-31)
+Platform: aarch64-apple-darwin20
+Running under: macOS Tahoe 26.5.1
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/New_York
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+loaded via a namespace (and not attached):
+ [1] vctrs_0.7.3       cli_3.6.6         knitr_1.51        rlang_1.3.0      
+ [5] xfun_0.56         stringi_1.8.7     otel_0.2.0        promises_1.5.0   
+ [9] clue_0.3-68       jsonlite_2.0.0    workflowr_1.7.2   glue_1.8.1       
+[13] rprojroot_2.1.1   git2r_0.36.2      htmltools_0.5.9   httpuv_1.6.17    
+[17] sass_0.4.10       rmarkdown_2.30    jquerylib_0.1.4   evaluate_1.0.5   
+[21] tibble_3.3.1      fastmap_1.2.0     yaml_2.3.12       lifecycle_1.0.5  
+[25] whisker_0.4.1     stringr_1.6.0     cluster_2.1.8.1   compiler_4.5.2   
+[29] fs_2.1.0          Rcpp_1.1.2        pkgconfig_2.0.3   rstudioapi_0.18.0
+[33] later_1.4.8       digest_0.6.39     R6_2.6.1          pillar_1.11.1    
+[37] magrittr_2.0.4    bslib_0.10.0      tools_4.5.2       cachem_1.1.0     </code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+https://docs.mathjax.org/en/latest/web/configuration.html. This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

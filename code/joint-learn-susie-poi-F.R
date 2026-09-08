@@ -166,6 +166,7 @@ update_mf_xi <- function(F, gamma_bar, alpha, beta) {
                               gamma_step_ramp = 50,
                               init_F = c("given", "poisson_nmf"),
                               nmf_iters = 200, init_gamma_from_nmf = FALSE,
+                              init_L = NULL,
                               gamma_init_floor = 1e-4,
                               F_step_init = 1, F_step_ramp = 50,
                               F_pseudocount = .Machine$double.eps,
@@ -193,7 +194,12 @@ update_mf_xi <- function(F, gamma_bar, alpha, beta) {
   log_F = log(F)
   F_sum = rowSums(F)  # (K,)
 
-  if (!is.null(nmf_fit) && init_gamma_from_nmf) {
+  if (!is.null(init_L)) {
+    if (!all(dim(init_L) == c(N, K))) {
+      stop("init_L must be an N by K loading matrix.")
+    }
+    gamma_bar = init_gamma_from_L(init_L, D, gamma_init_floor)
+  } else if (!is.null(nmf_fit) && init_gamma_from_nmf) {
     gamma_bar = init_gamma_from_L(nmf_fit$L, D, gamma_init_floor)
   } else {
     gamma_bar = array(rgamma(N * D * K, 1, 1), dim = c(N, D, K))
@@ -391,6 +397,8 @@ poisson_susie_nmf_fixed_F <- function(Y, F, D, max_iters = 100,
                                       init_seed = NULL,
                                       prior_shape = 1,
                                       prior_beta = 1,
+                                      init_L = NULL,
+                                      gamma_init_floor = 1e-4,
                                       gamma_step_init = 0.1,
                                       gamma_step_ramp = 50,
                                       elbo_every = 1, tol = NULL,
@@ -414,6 +422,8 @@ poisson_susie_nmf_fixed_F <- function(Y, F, D, max_iters = 100,
     gamma_step_ramp = gamma_step_ramp,
     init_F = "given",
     init_gamma_from_nmf = FALSE,
+    init_L = init_L,
+    gamma_init_floor = gamma_init_floor,
     elbo_every = elbo_every,
     tol = tol,
     min_iters = min_iters,

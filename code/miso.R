@@ -10,6 +10,10 @@ if (!exists("poisson_susie")) {
 if (!exists("poisson_susie_nmf")) {
   source("code/joint-learn-susie-poi-F.R")
 }
+if (!exists("init_aligned_mf_gamma") || !exists("init_pip_set_miso") ||
+    !exists("init_loading_set_miso")) {
+  source("code/miso-initialization.R")
+}
 
 log_sum_exp <- function(x) {
   xmax = max(x)
@@ -39,90 +43,6 @@ gamma_shape_from_moments <- function(E_lambda, E_log_lambda, n_iter = 8,
     shape = pmin(pmax(shape, min_shape), max_shape)
   }
   shape
-}
-
-init_motifs_from_loading_scores <- function(scores, S, D, init_seed = NULL,
-                                            min_share = 0.10,
-                                            allow_repeats = FALSE,
-                                            eps = 1e-12) {
-  if (!is.null(init_seed)) set.seed(init_seed)
-  K = ncol(scores)
-  if (!allow_repeats && D > K) {
-    stop("D must be no greater than K for distinct initialization.")
-  }
-  scores_norm = scores / pmax(rowSums(scores), eps)
-  km = kmeans(scores_norm, centers = S, nstart = 20, iter.max = 100)
-  motifs = matrix(NA_integer_, nrow = S, ncol = D)
-
-  for (s in seq_len(S)) {
-    center = km$centers[s, ] / pmax(sum(km$centers[s, ]), eps)
-    ord = order(center, decreasing = TRUE)
-    active = ord[center[ord] >= min_share]
-    if (length(active) == 0) active = ord[1]
-    if (length(active) > D) active = active[seq_len(D)]
-    if (allow_repeats) {
-      motifs[s, ] = rep(active, length.out = D)
-    } else {
-      motifs[s, ] = ord[seq_len(D)]
-    }
-  }
-
-  list(motifs = motifs, cluster = km$cluster, centers = km$centers)
-}
-
-init_soft_gamma_from_loading_scores <- function(scores, S, D, init_seed = NULL,
-                                                min_share = 0.10,
-                                                gamma_floor = 0.05,
-                                                surplus_slots = c("repeat",
-                                                                  "uniform"),
-                                                motif_initialization = c(
-                                                  "distinct", "threshold"
-                                                ),
-                                                eps = 1e-12) {
-  surplus_slots = match.arg(surplus_slots)
-  motif_initialization = match.arg(motif_initialization)
-  hard_init = init_motifs_from_loading_scores(
-    scores = scores,
-    S = S,
-    D = D,
-    init_seed = init_seed,
-    min_share = min_share,
-    allow_repeats = motif_initialization == "threshold",
-    eps = eps
-  )
-
-  K = ncol(scores)
-  gamma_bar = array(gamma_floor / K, dim = c(S, D, K))
-  for (s in seq_len(S)) {
-    seen = rep(FALSE, K)
-    for (d in seq_len(D)) {
-      k = hard_init$motifs[s, d]
-      is_surplus_repeat = seen[k]
-      if (motif_initialization == "distinct" ||
-          !(surplus_slots == "uniform" && is_surplus_repeat)) {
-        gamma_bar[s, d, k] = 1 - gamma_floor + gamma_floor / K
-      }
-      seen[k] = TRUE
-    }
-  }
-
-  list(
-    gamma_bar = gamma_bar,
-    hard_init = hard_init,
-    motif_initialization = motif_initialization
-  )
-}
-
-gamma_bar_from_motifs <- function(motifs, K, gamma_floor = 0.05) {
-  S = nrow(motifs)
-  D = ncol(motifs)
-  gamma_bar = array(gamma_floor / K, dim = c(S, D, K))
-  for (s in seq_len(S)) {
-    for (d in seq_len(D)) {
-      gamma_bar[s, d, motifs[s, d]] = 1 - gamma_floor + gamma_floor / K
-    }
-  }
-  gamma_bar
 }
 
 normalize_gamma_bar <- function(gamma_bar, eps = 1e-12) {
@@ -475,7 +395,9 @@ miso_gamma_kl <- function(gamma_bar, rho_prior = NULL, eps = 1e-12) {
 miso_fixed_gamma <- function(Y, F, gamma_bar, max_iters = 50,
                                 n_inner = 5, update_prior = TRUE,
                                 prior_shape = 1, prior_beta = 1,
-                                pi_init = NULL, rho_prior = NULL,
+                                alpha0_init = NULL, beta0_init = NULL,
+                                pi_init = NULL, omega_init = NULL,
+                                rho_prior = NULL,
                                 tol = 1e-5, min_iters = 5,
                                 patience = 3, update_F = FALSE,
                                 update_gamma = TRUE,
@@ -505,15 +427,48 @@ miso_fixed_gamma <- function(Y, F, gamma_bar, max_iters = 50,
     slot_scale = slot_scale_init
   }
 
-  alpha0 = matrix(prior_shape, nrow = S, ncol = D)
-  beta0 = matrix(prior_beta, nrow = S, ncol = D)
+  if (xor(is.null(alpha0_init), is.null(beta0_init))) {
+    stop("alpha0_init and beta0_init must be supplied together.")
+  }
+  if (is.null(alpha0_init)) {
+    alpha0 = matrix(prior_shape, nrow = S, ncol = D)
+    beta0 = matrix(prior_beta, nrow = S, ncol = D)
+  } else {
+    if (!all(dim(alpha0_init) == c(S, D)) ||
+        !all(dim(beta0_init) == c(S, D))) {
+      stop("alpha0_init and beta0_init must both be S by D matrices.")
+    }
+    if (any(!is.finite(alpha0_init)) || any(alpha0_init <= 0) ||
+        any(!is.finite(beta0_init)) || any(beta0_init <= 0)) {
+      stop("Initial Gamma shapes and rates must be finite and positive.")
+    }
+    alpha0 = alpha0_init
+    beta0 = beta0_init
+  }
+  alpha0_initial = alpha0
+  beta0_initial = beta0
+
+  if (is.null(pi_init) && !is.null(omega_init)) {
+    pi_init = colMeans(omega_init)
+  }
   if (is.null(pi_init)) {
     pi = rep(1 / S, S)
   } else {
     pi = pi_init / sum(pi_init)
   }
 
-  omega = matrix(1 / S, nrow = N, ncol = S)
+  if (is.null(omega_init)) {
+    omega = matrix(1 / S, nrow = N, ncol = S)
+  } else {
+    if (!all(dim(omega_init) == c(N, S)) ||
+        any(!is.finite(omega_init)) || any(omega_init < 0) ||
+        any(rowSums(omega_init) <= 0)) {
+      stop("omega_init must be a nonnegative N by S responsibility matrix.")
+    }
+    omega = omega_init / rowSums(omega_init)
+  }
+  omega_initial = omega
+  pi_initial = pi
   alpha = NULL
   elbo = rep(NA_real_, max_iters)
   gamma_history = vector("list", max_iters)
@@ -676,6 +631,10 @@ miso_fixed_gamma <- function(Y, F, gamma_bar, max_iters = 50,
     slot_scale = slot_scale,
     alpha0 = alpha0,
     beta0 = beta0,
+    alpha0_initial = alpha0_initial,
+    beta0_initial = beta0_initial,
+    omega_initial = omega_initial,
+    pi_initial = pi_initial,
     component_elbo = component_fit$component_elbo,
     C = component_fit$C,
     elbo = elbo,
@@ -686,7 +645,7 @@ miso_fixed_gamma <- function(Y, F, gamma_bar, max_iters = 50,
   )
 }
 
-miso <- function(Y, K, S, D, max_iters = 50, n_inner = 5,
+miso <- function(Y, K, S = NULL, D, max_iters = 50, n_inner = 5,
                     mf_max_iters = 60, mf_nmf_iters = 100,
                     init_seed = NULL, update_prior = TRUE,
                     prior_shape = 1, prior_beta = 1,
@@ -699,6 +658,8 @@ miso <- function(Y, K, S, D, max_iters = 50, n_inner = 5,
                     max_slot_scale = 1e3,
                     gamma_init_floor = 0.05,
                     motif_min_share = 0.10,
+                    init_pip_truncate_level = 0.95,
+                    init_loading_truncate_level = 0.95,
                     surplus_slots = c("repeat", "uniform"),
                     gamma_step_init = 0.5,
                     gamma_step_ramp = 10,
@@ -706,50 +667,114 @@ miso <- function(Y, K, S, D, max_iters = 50, n_inner = 5,
                     F_step_ramp = 20,
                     F_pseudocount = .Machine$double.eps,
                     block_size = 100,
-                    motif_initialization = c("distinct", "threshold")) {
+                    motif_initialization = c(
+                      "distinct", "threshold", "aligned_mf",
+                      "pip_sets_uniform_tail", "loading_sets_uniform_tail"
+                    )) {
   surplus_slots = match.arg(surplus_slots)
   motif_initialization = match.arg(motif_initialization)
-  if (motif_initialization == "distinct" && D > K) {
-    stop("D must be no greater than K for distinct initialization.")
+  uses_distinct_seeds = motif_initialization %in%
+    c("distinct", "aligned_mf", "pip_sets_uniform_tail",
+      "loading_sets_uniform_tail")
+  if (uses_distinct_seeds && D > K) {
+    stop("D must be no greater than K for a distinct-seed initialization.")
   }
-  mf_fit = poisson_susie_nmf(
-    Y = Y,
-    K = K,
-    D = D,
-    max_iters = mf_max_iters,
-    update_prior = TRUE,
-    prior_shape = prior_shape,
-    prior_beta = prior_beta,
-    init_seed = init_seed,
-    init_F = "poisson_nmf",
-    nmf_iters = mf_nmf_iters,
-    init_gamma_from_nmf = TRUE,
-    elbo_every = 5,
-    tol = 5e-4,
-    min_iters = 15,
-    patience = 2
-  )
+  is_score_set_init = motif_initialization %in%
+    c("pip_sets_uniform_tail", "loading_sets_uniform_tail")
 
-  gamma_init = init_soft_gamma_from_loading_scores(
-    scores = loading_scores_from_mf(mf_fit),
-    S = S,
-    D = D,
-    init_seed = init_seed,
-    min_share = motif_min_share,
-    gamma_floor = gamma_init_floor,
-    surplus_slots = surplus_slots,
-    motif_initialization = motif_initialization
-  )
+  if (is_score_set_init) {
+    if (!is.null(S)) {
+      stop(
+        "Set S = NULL for a score-set initialization; S is determined ",
+        "by the distinct truncated score sets."
+      )
+    }
+    nmf_fit = poisson_nmf_init(
+      Y, K = K, max_iters = mf_nmf_iters, init_seed = init_seed
+    )
+    ps_fit = poisson_susie_nmf_fixed_F(
+      Y = Y,
+      F = nmf_fit$F,
+      D = D,
+      max_iters = mf_max_iters,
+      update_prior = TRUE,
+      prior_shape = prior_shape,
+      prior_beta = prior_beta,
+      init_L = nmf_fit$L,
+      gamma_init_floor = 1e-4,
+      init_seed = init_seed,
+      elbo_every = 5,
+      tol = 5e-4,
+      min_iters = 15,
+      patience = 2
+    )
+    gamma_init = if (motif_initialization == "pip_sets_uniform_tail") {
+      init_pip_set_miso(
+        ps_fit = ps_fit,
+        pip_truncate_level = init_pip_truncate_level,
+        support_score = "pip",
+        gamma_floor = gamma_init_floor
+      )
+    } else {
+      init_loading_set_miso(
+        ps_fit = ps_fit,
+        loading_truncate_level = init_loading_truncate_level,
+        gamma_floor = gamma_init_floor
+      )
+    }
+    S = dim(gamma_init$gamma_bar)[1]
+    initial_F = nmf_fit$F
+  } else {
+    if (is.null(S)) {
+      stop("S must be supplied unless a score-set initialization is used.")
+    }
+    nmf_fit = NULL
+    ps_fit = NULL
+    mf_fit = poisson_susie_nmf(
+      Y = Y,
+      K = K,
+      D = D,
+      max_iters = mf_max_iters,
+      update_prior = TRUE,
+      prior_shape = prior_shape,
+      prior_beta = prior_beta,
+      init_seed = init_seed,
+      init_F = "poisson_nmf",
+      nmf_iters = mf_nmf_iters,
+      init_gamma_from_nmf = TRUE,
+      elbo_every = 5,
+      tol = 5e-4,
+      min_iters = 15,
+      patience = 2
+    )
+
+    gamma_init = init_soft_gamma_from_loading_scores(
+      scores = loading_scores_from_mf(mf_fit),
+      S = S,
+      D = D,
+      init_seed = init_seed,
+      min_share = motif_min_share,
+      gamma_floor = gamma_init_floor,
+      surplus_slots = surplus_slots,
+      motif_initialization = motif_initialization,
+      mf_fit = mf_fit
+    )
+    initial_F = mf_fit$F
+  }
 
   fit = miso_fixed_gamma(
     Y = Y,
-    F = mf_fit$F,
+    F = initial_F,
     gamma_bar = gamma_init$gamma_bar,
     max_iters = max_iters,
     n_inner = n_inner,
     update_prior = update_prior,
     prior_shape = prior_shape,
     prior_beta = prior_beta,
+    alpha0_init = if (is_score_set_init) gamma_init$alpha0 else NULL,
+    beta0_init = if (is_score_set_init) gamma_init$beta0 else NULL,
+    pi_init = if (is_score_set_init) gamma_init$pi_init else NULL,
+    omega_init = if (is_score_set_init) gamma_init$omega_init else NULL,
     tol = tol,
     min_iters = min_iters,
     patience = patience,
@@ -768,7 +793,9 @@ miso <- function(Y, K, S, D, max_iters = 50, n_inner = 5,
     block_size = block_size
   )
 
-  fit$mf_fit = mf_fit
+  fit$mf_fit = if (is_score_set_init) ps_fit else mf_fit
+  fit$ps_fit = ps_fit
+  fit$nmf_fit = nmf_fit
   fit$gamma_init = gamma_init
   fit$motif_initialization = motif_initialization
   fit

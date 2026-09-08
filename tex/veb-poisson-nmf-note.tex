@@ -1,0 +1,474 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{booktabs}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Poi}{\mathrm{Poi}}
+\newcommand{\Gam}{\mathrm{Gam}}
+\newcommand{\KL}{\mathrm{KL}}
+
+\title{Variational Empirical-Bayes Poisson NMF\\
+and Effective-Rank Selection}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Purpose and main qualification}
+
+Let $Y\in\N^{N\times M}$ be a count matrix.  We begin with a deliberately
+large candidate rank $K_{\max}$ and investigate whether factor-specific Gamma
+priors on the loading columns can suppress unnecessary factors.  The proposed
+model uses
+\[
+  L_{ik}\mid \alpha_k^0,\beta_k^0
+  \overset{\mathrm{ind.}}{\sim}
+  \Gam(\alpha_k^0,\beta_k^0),
+\]
+where the Gamma distribution is parameterized by shape and rate.  A
+mean-field approximation is used for $L$, and $(\alpha_k^0,\beta_k^0)$ are
+estimated by variational empirical Bayes (VEB).
+
+This procedure keeps $K_{\max}$ fixed and may estimate a smaller
+\emph{effective rank}.  It does not put a posterior distribution directly on
+$K$.  An unused factor has a VEB fixed-point direction in which its prior mean
+$\alpha_k^0/\beta_k^0$ approaches zero.  Nevertheless, unconstrained VEB is
+not guaranteed to remove redundant factors: two similar factors may divide
+the signal and both retain positive prior means.  Section~\ref{sec:rank}
+explains this qualification precisely.
+
+
+\section{Poisson NMF model}
+
+The observation model is
+\begin{align}
+  Y_{im}\mid L,F
+  &\overset{\mathrm{ind.}}{\sim}
+  \Poi\!\left(\sum_{k=1}^{K_{\max}}L_{ik}F_{km}\right),
+  \label{eq:observation-model}\\
+  L_{ik}\mid\alpha_k^0,\beta_k^0
+  &\overset{\mathrm{ind.}}{\sim}
+  \Gam(\alpha_k^0,\beta_k^0).
+  \label{eq:loading-prior}
+\end{align}
+We impose
+\begin{equation}
+  F_{km}\geq 0,
+  \qquad
+  \sum_{m=1}^M F_{km}=1,
+  \qquad k=1,\ldots,K_{\max}.
+  \label{eq:F-normalization}
+\end{equation}
+Under this normalization, $L_{ik}$ is the expected total count contributed by
+factor $k$ to observation $i$.  Consequently, the prior mean
+$\alpha_k^0/\beta_k^0$ has a directly interpretable scale.
+
+The model can be initialized with vanilla Poisson NMF.  If the initial
+factorization is $Y\approx \widetilde L\widetilde F$, define
+\begin{equation}
+  F_{km}^{(0)}
+  =
+  \frac{\widetilde F_{km}}
+       {\sum_{m'=1}^M\widetilde F_{km'}},
+  \qquad
+  L_{ik}^{(0)}
+  =
+  \widetilde L_{ik}\sum_{m=1}^M\widetilde F_{km}.
+  \label{eq:nmf-normalization}
+\end{equation}
+This removes the ordinary NMF scale ambiguity without changing the fitted
+mean.
+
+
+\section{Poisson allocation augmentation}
+
+Introduce latent component-specific counts
+\begin{equation}
+  Z_{imk}\mid L,F\sim\Poi(L_{ik}F_{km}),
+  \qquad
+  Y_{im}=\sum_{k=1}^{K_{\max}}Z_{imk}.
+  \label{eq:latent-counts}
+\end{equation}
+Conditional on $Y_{im}$, their variational distribution is multinomial:
+\begin{equation}
+  q(Z_{im1},\ldots,Z_{imK_{\max}}\mid Y_{im})
+  =
+  \operatorname{Multinomial}
+  \left(Y_{im};\xi_{im1},\ldots,\xi_{imK_{\max}}\right),
+  \label{eq:q-Z}
+\end{equation}
+where $\xi_{imk}\geq0$ and $\sum_k\xi_{imk}=1$.
+
+We use the mean-field family
+\begin{equation}
+  q(L,Z)
+  =
+  \left\{
+    \prod_{i=1}^N\prod_{k=1}^{K_{\max}}
+    \Gam(L_{ik};\alpha_{ik},\beta_{ik})
+  \right\}
+  \left\{
+    \prod_{i=1}^N\prod_{m=1}^M q(Z_{im}\mid Y_{im})
+  \right\}.
+  \label{eq:mean-field-family}
+\end{equation}
+
+
+\section{Variational lower bound}
+
+Up to the constants $-\sum_{i,m}\log(Y_{im}!)$, the augmented variational
+lower bound is
+\begin{align}
+  \mathcal L
+  ={}&
+  \sum_{i=1}^N\sum_{m=1}^M\sum_{k=1}^{K_{\max}}
+  Y_{im}\xi_{imk}
+  \left\{
+    \psi(\alpha_{ik})-\log\beta_{ik}
+    +\log F_{km}-\log\xi_{imk}
+  \right\}
+  \nonumber\\
+  &-
+  \sum_{i=1}^N\sum_{k=1}^{K_{\max}}
+  \frac{\alpha_{ik}}{\beta_{ik}}
+  \sum_{m=1}^M F_{km}
+  \nonumber\\
+  &-
+  \sum_{i=1}^N\sum_{k=1}^{K_{\max}}
+  \KL\!\left\{
+    \Gam(\alpha_{ik},\beta_{ik})
+    \,\middle\|\,
+    \Gam(\alpha_k^0,\beta_k^0)
+  \right\}.
+  \label{eq:elbo}
+\end{align}
+We use the conventions $0\log0=0$ and $\log F_{km}=-\infty$ when
+$F_{km}=0$.  In computation, the log is protected by a small numerical
+constant, but the factor update itself may preserve exact zeros if desired.
+
+For Gamma distributions parameterized by shape and rate,
+\begin{align}
+  &\KL\!\left\{
+    \Gam(\alpha,\beta)
+    \,\middle\|\,
+    \Gam(\alpha^0,\beta^0)
+  \right\}
+  \nonumber\\
+  &\quad=
+  (\alpha-\alpha^0)\psi(\alpha)
+  +\alpha^0\log\frac{\beta}{\beta^0}
+  -\log\Gamma(\alpha)+\log\Gamma(\alpha^0)
+  -\alpha+\frac{\alpha\beta^0}{\beta}.
+  \label{eq:gamma-kl}
+\end{align}
+
+
+\section{Coordinate updates}
+
+\subsection{Latent count allocations}
+
+For every $i,m,k$,
+\begin{equation}
+  \xi_{imk}
+  =
+  \frac{
+    F_{km}\exp\{\psi(\alpha_{ik})-\log\beta_{ik}\}
+  }{
+    \sum_{h=1}^{K_{\max}}
+    F_{hm}\exp\{\psi(\alpha_{ih})-\log\beta_{ih}\}
+  }.
+  \label{eq:xi-update}
+\end{equation}
+Only entries with $Y_{im}>0$ contribute to subsequent sufficient statistics,
+so the implementation need not store $\xi_{imk}$ for zero observations.
+
+\subsection{Loading posterior}
+
+Conjugacy gives
+\begin{align}
+  \alpha_{ik}
+  &\leftarrow
+  \alpha_k^0+
+  \sum_{m=1}^M Y_{im}\xi_{imk},
+  \label{eq:alpha-update}\\
+  \beta_{ik}
+  &\leftarrow
+  \beta_k^0+
+  \sum_{m=1}^M F_{km}.
+  \label{eq:beta-update}
+\end{align}
+Because of Eq.~\eqref{eq:F-normalization},
+\begin{equation}
+  \beta_{ik}=\beta_k^0+1.
+  \label{eq:beta-normalized}
+\end{equation}
+
+\subsection{Factor dictionary}
+
+Let
+\begin{equation}
+  C_{km}
+  =
+  \sum_{i=1}^N Y_{im}\xi_{imk}.
+  \label{eq:factor-count}
+\end{equation}
+Maximizing the lower bound over a row-normalized $F$ gives
+\begin{equation}
+  F_{km}
+  \leftarrow
+  \frac{C_{km}}{\sum_{m'=1}^M C_{km'}}.
+  \label{eq:F-update}
+\end{equation}
+If $\sum_m C_{km}$ is numerically zero, the factor is provisionally inactive;
+its previous row may be retained until the final pruning decision.  Damping
+the update can improve stability when factors are nearly redundant.
+
+\subsection{Variational empirical-Bayes update}
+
+For each candidate factor $k$, define the posterior averages
+\begin{align}
+  \overline{\lambda}_k
+  &=
+  \frac{1}{N}\sum_{i=1}^N
+  \frac{\alpha_{ik}}{\beta_{ik}},
+  \label{eq:mean-loading}\\
+  \overline{\log\lambda}_k
+  &=
+  \frac{1}{N}\sum_{i=1}^N
+  \left\{\psi(\alpha_{ik})-\log\beta_{ik}\right\}.
+  \label{eq:mean-log-loading}
+\end{align}
+Maximizing
+\[
+  \sum_{i=1}^N
+  \E_q\!\left[
+    \log\Gam(L_{ik};\alpha_k^0,\beta_k^0)
+  \right]
+\]
+over $(\alpha_k^0,\beta_k^0)$ gives
+\begin{align}
+  \beta_k^0
+  &\leftarrow
+  \frac{\alpha_k^0}{\overline{\lambda}_k},
+  \label{eq:prior-rate-update}\\
+  \log\alpha_k^0-\psi(\alpha_k^0)
+  &=
+  \log\overline{\lambda}_k-
+  \overline{\log\lambda}_k.
+  \label{eq:prior-shape-equation}
+\end{align}
+Equation~\eqref{eq:prior-shape-equation} can be solved by Newton's method.  If
+\[
+  g(\alpha)
+  =
+  \log\alpha-\psi(\alpha)
+  -\log\overline{\lambda}_k
+  +\overline{\log\lambda}_k,
+\]
+then
+\begin{equation}
+  \alpha
+  \leftarrow
+  \alpha-
+  \frac{g(\alpha)}{1/\alpha-\psi_1(\alpha)},
+  \label{eq:newton-update}
+\end{equation}
+where $\psi_1$ is the trigamma function.  Numerical lower and upper bounds on
+$\alpha_k^0$ and damping of both hyperparameter updates are recommended.
+
+
+\section{Inference algorithm}
+
+\begin{algorithm}[H]
+\caption{VEB Poisson NMF initialized by vanilla NMF}
+\label{alg:veb-nmf}
+\small
+\begin{algorithmic}[1]
+\Require Count matrix $Y$, candidate rank $K_{\max}$, inner iterations $R$,
+outer iterations $T$, convergence tolerance $\delta$, and numerical constant
+$\epsilon$.
+\State Fit rank-$K_{\max}$ vanilla Poisson NMF to obtain
+$(\widetilde L,\widetilde F)$.
+\State Normalize the factor rows and rescale the loading columns using
+Eq.~\eqref{eq:nmf-normalization}; call the results $(L^{(0)},F^{(0)})$.
+\State Initialize $\xi_{imk}\propto L_{ik}^{(0)}F_{km}^{(0)}$.
+\State Initialize positive $(\alpha_k^0,\beta_k^0)$ from the columns of
+$L^{(0)}$, and initialize $(\alpha_{ik},\beta_{ik})$ using
+Eqs.~\eqref{eq:alpha-update}--\eqref{eq:beta-update}.
+\For{$t=1,\ldots,T$}
+  \For{$r=1,\ldots,R$}
+    \State Update $\xi$ using Eq.~\eqref{eq:xi-update}, retaining only the
+    sufficient statistics needed for nonzero $Y_{im}$.
+    \State Update $(\alpha_{ik},\beta_{ik})$ using
+    Eqs.~\eqref{eq:alpha-update}--\eqref{eq:beta-update}.
+  \EndFor
+  \State Update $F$ using Eq.~\eqref{eq:F-update}; optionally damp and then
+  row-normalize.
+  \State Update $(\alpha_k^0,\beta_k^0)$ independently for every $k$ using
+  Eqs.~\eqref{eq:prior-rate-update}--\eqref{eq:newton-update}; optionally damp.
+  \State Evaluate the lower bound in Eq.~\eqref{eq:elbo}.
+  \If{the relative lower-bound improvement is less than $\delta$}
+    \State \textbf{break}
+  \EndIf
+\EndFor
+\State Recompute $\xi$ and $q(L)$ using the final $F$ and prior parameters.
+\State Calculate the relevance summaries in Eqs.~\eqref{eq:relevance-mean}
+and~\eqref{eq:allocated-share}, and prune only after convergence.
+\State \Return $F$, $(\alpha_{ik},\beta_{ik})$,
+$(\alpha_k^0,\beta_k^0)$, the lower-bound history, and
+$\widehat K_{\mathrm{eff}}$.
+\end{algorithmic}
+\end{algorithm}
+
+
+\section{Can this procedure learn the rank?}
+\label{sec:rank}
+
+The natural VEB relevance summary is
+\begin{equation}
+  r_k
+  =
+  \frac{\alpha_k^0}{\beta_k^0}.
+  \label{eq:relevance-mean}
+\end{equation}
+At an interior VEB optimum, $r_k=\overline\lambda_k$.  A complementary
+data-allocation summary is
+\begin{equation}
+  p_k
+  =
+  \frac{
+    \sum_{i=1}^N\sum_{m=1}^M Y_{im}\xi_{imk}
+  }{
+    \sum_{i=1}^N\sum_{m=1}^M Y_{im}
+  }.
+  \label{eq:allocated-share}
+\end{equation}
+For an exploratory implementation, one may report
+\begin{equation}
+  \widehat K_{\mathrm{eff}}(\tau)
+  =
+  \#\left\{
+    k:
+    \frac{r_k}{\sum_{h=1}^{K_{\max}}r_h}\geq\tau
+    \ \text{and}\ 
+    p_k\geq\tau
+  \right\}.
+  \label{eq:effective-rank}
+\end{equation}
+This is a thresholded effective rank, not a posterior estimate of $K$.
+
+There is a real shrinkage mechanism.  Suppose factor $k$ receives no counts,
+so that $\sum_mY_{im}\xi_{imk}=0$ for every $i$.  Then
+\[
+  \alpha_{ik}=\alpha_k^0,
+  \qquad
+  \beta_{ik}=\beta_k^0+1.
+\]
+The next undamped VEB update leaves the shape unchanged and maps
+\[
+  \beta_k^0\leftarrow\beta_k^0+1.
+\]
+Repeated updates therefore drive $r_k=\alpha_k^0/\beta_k^0$ toward zero.  In
+this sense, an empty component can be automatically suppressed.
+
+The difficulty is that an overfitted component need not remain empty.  The
+factor update may adapt it to sampling noise, after which it receives counts
+and escapes shrinkage.  More fundamentally, suppose two factor rows are
+identical, $F_{1\cdot}=F_{2\cdot}$, and their loading priors have a common rate:
+\[
+  L_{i1}\sim\Gam(\alpha_1^0,\beta^0),
+  \qquad
+  L_{i2}\sim\Gam(\alpha_2^0,\beta^0).
+\]
+Then
+\begin{equation}
+  L_{i1}+L_{i2}
+  \sim
+  \Gam(\alpha_1^0+\alpha_2^0,\beta^0).
+  \label{eq:gamma-splitting}
+\end{equation}
+The likelihood cannot distinguish this two-factor representation from a
+single identical factor having shape $\alpha_1^0+\alpha_2^0$.  Consequently,
+VEB may have both a pruned solution and a signal-splitting solution, with the
+selected solution depending on initialization and optimization.
+
+
+\section{Relationship to conventional ARD}
+
+In the ARD-NMF model of \cite{tan2013ard}, a common relevance scale ties an
+entire dictionary component to its corresponding loading vector.  Optimizing
+that scale yields a group-sparsity penalty, and a component is pruned when both
+sides approach zero.  The VEB model above differs in two ways: $F$ is
+constrained to have unit row sums, and $(\alpha_k^0,\beta_k^0)$ are fitted to
+the loading distribution without a sparsity-inducing hyperprior.  Learning a
+prior is therefore not, by itself, equivalent to ARD.
+
+A closer conjugate ARD extension would fix a common loading shape $a_L$ and
+introduce a factor-specific rate,
+\begin{align}
+  L_{ik}\mid\tau_k
+  &\sim\Gam(a_L,\tau_k),\\
+  \tau_k
+  &\sim\Gam(c_0,d_0).
+\end{align}
+Under a mean-field approximation,
+\begin{equation}
+  q(\tau_k)
+  =
+  \Gam\!\left(
+    c_0+Na_L,
+    d_0+\sum_{i=1}^N\E_q[L_{ik}]
+  \right).
+  \label{eq:hierarchical-ard-update}
+\end{equation}
+A factor with little total loading obtains a large posterior rate
+$\E_q[\tau_k]$, which then shrinks every $L_{ik}$ in that column.  A global
+spike-and-slab indicator for each loading column would provide exact component
+exclusion, at the cost of a more involved variational update.
+
+For the first experiment, the unconstrained VEB algorithm should be
+implemented exactly as Algorithm~\ref{alg:veb-nmf}, because its successes and
+failures are scientifically informative.  It should then be compared with
+(i) fixed $\alpha_k^0$ and learned $\beta_k^0$, and (ii) the hierarchical
+relevance-rate model in Eq.~\eqref{eq:hierarchical-ard-update}.
+
+
+\section{Proposed validation experiments}
+
+For data generated with true rank one, fit
+$K_{\max}\in\{1,2,5,10\}$ and use multiple random initializations.  Record:
+\begin{enumerate}
+  \item $r_k=\alpha_k^0/\beta_k^0$ and the allocated count share $p_k$;
+  \item the thresholded effective rank over a range of $\tau$;
+  \item training and held-out Poisson deviance;
+  \item pairwise cosine similarities among the learned rows of $F$;
+  \item whether redundant factors are pruned or split the true signal;
+  \item sensitivity to learning both Gamma parameters versus fixing the shape;
+  \item sensitivity to initialization and update damping.
+\end{enumerate}
+Held-out prediction is important because a redundant factor may survive by
+fitting sampling noise in the same data used to learn $F$ and its prior.
+
+
+\begin{thebibliography}{1}
+
+\bibitem{tan2013ard}
+V.~Y.~F. Tan and C. F\'evotte.
+\newblock Automatic relevance determination in nonnegative matrix
+factorization with the $\beta$-divergence.
+\newblock \emph{IEEE Transactions on Pattern Analysis and Machine
+Intelligence}, 35(7):1592--1605, 2013.
+\newblock \url{https://arxiv.org/abs/1111.6085}.
+
+\end{thebibliography}
+
+\end{document}

@@ -10,18 +10,39 @@ The frozen public API has three fitting functions:
 
 For an interactive session, source `code/miso.R`; it loads all three public
 functions. The main implementation files are `poisson-susie.R`,
-`joint-learn-susie-poi-F.R`, and `miso.R`.
+`joint-learn-susie-poi-F.R`, `miso-initialization.R`, and `miso.R`.
 
 ## MiSo initialization
 
 By default, `miso()` clusters row-normalized preliminary loadings from the
 Poisson-SuSiE-NMF fit and initializes each motif with the top `D` distinct
 factors in its cluster center. Thus the default requires `D <= K` and avoids
-collapsing several dimensions onto one repeated factor. Use
-`motif_initialization = "threshold"` only to reproduce the older
-threshold-and-recycle initializer. For that legacy initializer,
-`motif_min_share` controls the threshold and `surplus_slots` controls whether
-recycled dimensions are repeated or initialized uniformly.
+collapsing several dimensions onto one repeated factor.
+
+The available motif initializations are:
+
+1. `distinct`: initialize nearly point-mass posteriors on the top `D` distinct
+   cluster-center factors;
+2. `threshold`: retain cluster-center factors above `motif_min_share`, with
+   `surplus_slots` controlling whether extra dimensions repeat retained factors
+   or begin uniformly;
+3. `aligned_mf`: use the same top `D` distinct factors as alignment anchors,
+   align the exchangeable MF slots within each preliminary cluster, and average
+   their factor-selection posteriors using normalized expected loadings;
+4. `pip_sets_uniform_tail`: fit vanilla NMF, freeze its dictionary for row-wise
+   Poisson SuSiE, set `S` to the number of distinct PIP sets truncated at
+   `init_pip_truncate_level`, concentrate supported slots on their ordered
+   factors, and initialize unsupported tail slots uniformly over `K`. This
+   option requires `S = NULL` and also transfers moment-matched Gamma priors
+   from the aligned row-wise posteriors;
+5. `loading_sets_uniform_tail`: use the same procedure, but replace the PIP by
+   the posterior expected factor loading
+   `R[i, k] = sum_d gamma_bar[i, d, k] * alpha[i, d, k] / beta[i, d, k]`.
+   Cumulative shares of `R[i, ]` are truncated at
+   `init_loading_truncate_level`. This option also requires `S = NULL`.
+
+All motif initialization functions are collected in
+`code/miso-initialization.R`.
 
 ## Notation
 
